@@ -30,8 +30,8 @@ go.work.sum
 .env
 
 # Editor/IDE
- .idea/
- .vscode/
+.idea/
+.vscode/
 
 
 # For testing on k3s cluster
