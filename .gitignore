@@ -7,7 +7,7 @@
 *.dll
 *.so
 *.dylib
-bin
+bin/
 
 # Test binary, built with `go test -c`
 *.test
@@ -35,4 +35,4 @@ go.work.sum
 
 
 # For testing on k3s cluster
-.k3s
+.k3s/
