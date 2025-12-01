@@ -1,0 +1,7 @@
+[general]
+# enable Conventional‑Commit style rules
+contrib = contrib-title-conventional-commits
+ignore=body-is-missing
+
+[T1]  # title max-length
+line-length = 72
