@@ -17,7 +17,11 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Run linter
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:
           version: v2.6.2
+          args: --timeout=5m  # prevents CI timeout (common!)
