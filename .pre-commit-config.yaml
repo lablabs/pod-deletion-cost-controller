@@ -1,0 +1,39 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v1.60.3
+    hooks:
+      - id: golangci-lint
+        args: [--fix]                 # auto-fix lint issues when possible
+
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v1.0.0
+    hooks:
+      - id: go-fmt                   # format code
+      - id: go-vet                   # basic static analysis
+      - id: go-mod-tidy              # keep go.mod / go.sum clean
+      - id: go-test                  # run unit tests
+
+  - repo: https://github.com/securego/gosec
+    rev: v2.21.0
+    hooks:
+      - id: gosec
+        args: ["./..."]              # security scan
+
+  - repo: https://github.com/ibraimgm/pre-commit-license
+    rev: v1.0.0
+    hooks:
+      - id: license-header           # optional, enforce license text in headers
+        args:
+          - --license
+          - ./LICENSE
+
+default_stages: [commit, push]

@@ -1,0 +1,5 @@
+helm 3.19.1
+pre-commit 4.4.0
+golang 1.25.4
+kubectl v1.34.1
+golangci-lint 2.4.0
