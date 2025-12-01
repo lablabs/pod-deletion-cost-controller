@@ -22,3 +22,9 @@ repos:
     rev: v2.6.2
     hooks:
       - id: golangci-lint
+        pass_filenames: false
+        additional_dependencies: []   # MUST be here or Go env is empty
+        args:
+          - --timeout=5m
+          - ./...
+        require_serial: true

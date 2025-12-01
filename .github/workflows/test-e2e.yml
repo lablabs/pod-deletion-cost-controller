@@ -1,8 +1,15 @@
-name: E2E Tests
+name: E2E/Integration Tests
 
 on:
-  push:
   pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
 
 jobs:
   test-e2e:
@@ -26,7 +33,7 @@ jobs:
       - name: Verify kind installation
         run: kind version
 
-      - name: Running Test e2e
+      - name: Running Test e2e in kind
         run: |
           go mod tidy
           make test-e2e
