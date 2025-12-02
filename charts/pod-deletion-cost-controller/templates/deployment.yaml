@@ -46,7 +46,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             {{- if .Values.metrics.enabled }}
-            - name: metric
+            - name: metric-port
               containerPort: {{ .Values.metrics.service.ports.metrics }}
               protocol: TCP
             {{- end }}
