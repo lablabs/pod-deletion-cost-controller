@@ -1,6 +1,6 @@
 # pod-deletion-cost-controller
 
-Controller for applying `controller.kubernetes.io/pod-deletion-cost` annotation. This annotation influences
+Controller for injecting `controller.kubernetes.io/pod-deletion-cost` annotation into running Pod. This annotation influences
 which Pods are terminated first during downscaling. This allows the controller to make smarter decisions during scale-down and
 avoid removing too many Pods from a single availability zone, which could compromise resilience.
 In practice, by defining a deletion cost strategy across Pods, Kubernetes can evenly distribute termination events and maintain
@@ -60,7 +60,7 @@ metadata:
     app: nginx
   annotations:
     pod-deletion-cost.lablabs.io/enabled: "true"
-    pod-deletion-cost.lablabs.io/spread-by: "topology.kubernetes.io/rack" # Use this annotation instead of zone
+    pod-deletion-cost.lablabs.io/spread-by: "topology.kubernetes.io/rack" # Example of annotation, on-prem etc..
 spec:
   replicas: 8
   selector:
@@ -85,16 +85,23 @@ spec:
 
 # Install
 
-Via helm chart
-
+Helm install:
+```bash
+VERSION=v0.0.0-alpha.2
+helm pull oci://ghcr.io/lablabs/pod-deletion-cost-controller/pod-deletion-cost-controller --version ${VERSION}
+helm upgrade --install -n operations \
+    --create-namespace pod-deletion-cost-controller  \
+    oci://ghcr.io/lablabs/pod-deletion-cost-controller/pod-deletion-cost-controller \
+    --version ${VERSION}
+```
 
 # Development
 
 Build with [kubebuilder](https://book.kubebuilder.io)
 
-Dependencies
+Dependencies:
 
-- [Kind](https://kind.sigs.k8s.io/) - for running tests
+- [Kind](https://kind.sigs.k8s.io/) - for running tests. It's not downloaded automatically as the other tools in bin folder
 
 # Test
 

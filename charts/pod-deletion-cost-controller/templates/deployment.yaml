@@ -38,8 +38,8 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- if .Values.image.override }}
-          image: "{{ .Values.image.override }}"
+          {{- if .Values.image.fullNameOverride }}
+          image: "{{ .Values.image.fullNameOverride }}"
           {{- else }}
           image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           {{- end }}
@@ -47,7 +47,7 @@ spec:
           ports:
             {{- if .Values.metrics.enabled }}
             - name: metric
-              containerPort: {{ .Values.service.port }}
+              containerPort: {{ .Values.metrics.service.ports.metrics }}
               protocol: TCP
             {{- end }}
 {{/*          {{- with .Values.livenessProbe }}*/}}

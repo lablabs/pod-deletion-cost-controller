@@ -163,7 +163,7 @@ func main() {
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "8bc3731b.deletion-cost-ctl.io",
+		LeaderElectionID:       "8bc3731b.pod-deletion-cost-controller.lablabs.io",
 		// Enable strict mode. TODO consider it
 		Cache: cache.Options{
 			ByObject: map[client.Object]cache.ByObject{

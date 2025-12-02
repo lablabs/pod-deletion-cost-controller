@@ -64,7 +64,7 @@ test: manifests generate fmt vet setup-envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
 
 KIND_CLUSTER ?= pod-deletion-cost-controller-test-e2e
-KIND_CLUSTER_CONFIG_NAME ?= kind-1-workers.yaml
+KIND_CLUSTER_CONFIG_NAME ?= cluster.yaml
 
 .PHONY: setup-test-e2e
 setup-test-e2e: ## Set up a Kind cluster for e2e tests if it does not exist
@@ -158,7 +158,7 @@ load-image: docker-build  ## Load docker-image into kind cluster
 .PHONY: deploy
 deploy: helm ## Deploy controller to the K8s cluster specified in ~/.kube/config via helm
 	$(HELM) upgrade --install ${HELM_RELEASE_NAME} ./charts/pod-deletion-cost-controller \
- 		--namespace ${NAMESPACE} --create-namespace --set image.override=${IMG} \
+ 		--namespace ${NAMESPACE} --create-namespace --set image.fullNameOverride=${IMG} \
  		$(if $(DRY_RUN),--dry-run=client,)
 
 .PHONY: build-and-deploy

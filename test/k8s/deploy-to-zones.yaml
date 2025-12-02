@@ -6,7 +6,6 @@ metadata:
     app: nginx-zone
   annotations:
     pod-deletion-cost.lablabs.io/enabled: "true"
-  namespace: zone
 spec:
   replicas: 8 # choose number divisible by number of zones if possible
   selector:
