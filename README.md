@@ -46,10 +46,10 @@ spec:
           image: nginx:latest
 ```
 
-This annotation applies `controller.kubernetes.io/pod-deletion-cost` to Pods in a Deployment.
-It helps ensure Pods are terminated evenly during downscaling. By default, Kubernetes does not
-distribute this across zones automatically — this chart adds that capability, using `topology.kubernetes.io/zone`
-unless overridden via `pod-deletion-cost.lablabs.io/spread-by`.
+In default configuration, controller looks for node's label `topology.kubernetes.io/zone` and base on value
+evenly distribute termination order via `controller.kubernetes.io/pod-deletion-cost`. In case Nodes are deployed
+in no zone env, it can be overridden via `pod-deletion-cost.lablabs.io/spread-by` which define Label name of Node
+used for spread topology counting logic.
 
 ```yaml
 apiVersion: apps/v1
