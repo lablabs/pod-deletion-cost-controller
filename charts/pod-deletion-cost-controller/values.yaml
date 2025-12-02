@@ -11,7 +11,7 @@ image:
   override:
   registry: example.com
   repository: pod-deletion-cost-controller
-  tag: v0.0.1
+  tag:
 
   pullPolicy: IfNotPresent
 

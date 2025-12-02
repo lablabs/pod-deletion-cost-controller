@@ -36,6 +36,23 @@ jobs:
         with:
           version: '${{ env.HELM_VERSION }}'
 
+
+      - name: Extract version
+        id: version
+        run: |
+          RAW_VERSION="${GITHUB_REF_NAME}"
+          echo "VERSION=$RAW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Set Helm chart version
+        run: |
+          sed -i "s/^version:.*/version: ${${{ steps.version.outputs.VERSION }} }/" \
+            charts/pod-deletion-cost-controller/Chart.yaml
+
+      - name: Set Helm appVersion
+        run: |
+          sed -i "s/^appVersion:.*/appVersion: \"${{ steps.version.outputs.VERSION }}\"/" \
+            charts/pod-deletion-cost-controller/Chart.yaml
+
       - name: Publish Helm chart
         uses: bsord/helm-push@v4
         with:
