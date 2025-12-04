@@ -85,14 +85,17 @@ var _ = Describe("Controller", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("wait for pod to be running")
-			waitCmd := exec.Command(
-				"kubectl", "wait", "pods",
-				"-l", "app=app",
-				"-n", namespace,
-				"--for=condition=Ready",
-				fmt.Sprintf("--timeout=%s", timeout.String()),
-			)
-			_, err = utils.Run(waitCmd)
+			Eventually(func() error {
+				waitCmd := exec.Command(
+					"kubectl", "wait", "pods",
+					"-l", "app=app",
+					"-n", namespace,
+					"--for=condition=Ready",
+					fmt.Sprintf("--timeout=%s", "0"),
+				)
+				_, err = utils.Run(waitCmd)
+				return err
+			}, timeout.String(), "2s").Should(Succeed())
 
 			By("list annotation for pod")
 			annCmd := exec.Command(
@@ -134,15 +137,17 @@ var _ = Describe("Controller", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("wait for pod to be running")
-			waitCmd := exec.Command(
-				"kubectl", "wait", "pods",
-				"-l", "app=app",
-				"-n", namespace,
-				"--for=condition=Ready",
-				fmt.Sprintf("--timeout=%s", timeout.String()),
-			)
-			_, err = utils.Run(waitCmd)
-			Expect(err).NotTo(HaveOccurred())
+			Eventually(func() error {
+				waitCmd := exec.Command(
+					"kubectl", "wait", "pods",
+					"-l", "app=app",
+					"-n", namespace,
+					"--for=condition=Ready",
+					fmt.Sprintf("--timeout=%s", "0"),
+				)
+				_, err = utils.Run(waitCmd)
+				return err
+			}, timeout.String(), "2s").Should(Succeed())
 
 			By("change env variable to trigger new ReplicaSet rollout")
 			chaneEnvCmd := exec.Command(
@@ -165,22 +170,18 @@ var _ = Describe("Controller", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("wait for pod to be running")
-			waitCmd = exec.Command(
-				"kubectl", "wait", "pods",
-				"-l", "app=app",
-				"-n", namespace,
-				"--for=condition=Ready",
-				fmt.Sprintf("--timeout=%s", timeout.String()),
-			)
-			_, err = utils.Run(waitCmd)
-			if err != nil {
-				getCmd := exec.Command(
-					"kubectl", "get", "pods",
-					"-n", namespace, "-o", "json")
-				getOut, _ := utils.Run(getCmd)
-				fmt.Fprintf(GinkgoWriter, "%s\n", getOut)
-			}
-			Expect(err).NotTo(HaveOccurred())
+			Eventually(func() error {
+				waitCmd := exec.Command(
+					"kubectl", "wait", "pods",
+					"-l", "app=app",
+					"-n", namespace,
+					"--for=condition=Ready",
+					fmt.Sprintf("--timeout=%s", "0"),
+				)
+				_, err = utils.Run(waitCmd)
+				return err
+			}, timeout.String(), "2s").Should(Succeed())
+
 			By("getting latest rs")
 			rsNameCmd := exec.Command(
 				"kubectl", "get", "rs",
