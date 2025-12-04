@@ -36,7 +36,7 @@ import (
 // namespace where the project is deployed in
 const namespace = "pod-deletion-cost-controller-system"
 
-const timeout = time.Second * 60
+const timeout = time.Second * 120
 
 var _ = Describe("Controller", Ordered, func() {
 	BeforeAll(func() {

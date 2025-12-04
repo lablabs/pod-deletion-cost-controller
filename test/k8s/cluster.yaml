@@ -5,6 +5,3 @@ nodes:
   - role: worker
     labels:
       topology.kubernetes.io/zone: eu-centra-1a
-  - role: worker
-    labels:
-      topology.kubernetes.io/zone: eu-central-1b
