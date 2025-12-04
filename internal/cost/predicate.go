@@ -16,7 +16,7 @@ func AcceptDeploymentPredicateFunc() predicate.Predicate {
 		if dep.Annotations == nil {
 			return false
 		}
-		return ok && dep.Annotations[EnableAnnotation] == "true"
+		return dep.Annotations[EnableAnnotation] == "true"
 	})
 }
 
