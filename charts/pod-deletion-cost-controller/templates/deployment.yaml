@@ -44,20 +44,63 @@ spec:
           image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            {{- if .Values.health.enabled }}
+            - "-health-probe-bind-address"
+            - {{ printf ":%d" (int .Values.health.port) }}
+            {{- end }}
+            {{- if .Values.metrics.enabled }}
+            - "-metrics-bind-address"
+            - {{ printf ":%d" (int .Values.metrics.service.ports.metrics ) }}
+            {{- if .Values.metrics.tls.enabled }}
+            - "-metrics-secure"
+            - "true"
+            - "-metrics-cert-key"
+            - "{{ .Values.metrics.tls.certKey }}"
+            - "-metrics-cert-name"
+            - "{{ .Values.metrics.tls.certName }}"
+            - "-metrics-cert-path"
+            - "{{ .Values.metrics.tls.certPath }}"
+            {{- end }}
+            - "-metrics-secure"
+            - "false"
+            {{- else }}
+            - "-metrics-bind-address"
+            - ":0"
+            {{- end}}
+            - -enable-http2
+            - "{{ .Values.htt2.enabled }}"
+            - "-zap-devel"
+            - "{{ .Values.log.devel }}"
+            - "-zap-encoder"
+            - "{{ .Values.log.encoder }}"
+            - "-zap-log-level"
+            - "{{ .Values.log.level }}"
+            - "-zap-stacktrace-level"
+            - "{{ .Values.log.stackTraceLevel }}"
+            - "-zap-time-encoding"
+            - "{{ .Values.log.timeEncoding }}"
           ports:
             {{- if .Values.metrics.enabled }}
-            - name: metric-port
+            - name: http-metric
               containerPort: {{ .Values.metrics.service.ports.metrics }}
               protocol: TCP
             {{- end }}
-{{/*          {{- with .Values.livenessProbe }}*/}}
-{{/*          livenessProbe:*/}}
-{{/*            {{- toYaml . | nindent 12 }}*/}}
-{{/*          {{- end }}*/}}
-{{/*          {{- with .Values.readinessProbe }}*/}}
-{{/*          readinessProbe:*/}}
-{{/*            {{- toYaml . | nindent 12 }}*/}}
-{{/*          {{- end }}*/}}
+            {{- if .Values.health.enabled }}
+            - name: http-health
+              containerPort: {{ .Values.health.port }}
+              protocol: TCP
+            {{- end }}
+          {{- if .Values.health.enabled }}
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- end }}
           {{- with .Values.resources }}
           resources:
             {{- toYaml . | nindent 12 }}

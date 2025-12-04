@@ -10,7 +10,7 @@ replicaCount: 1
 image:
   fullNameOverride:
   registry: ghcr.io
-  repository: pod-deletion-cost-controller
+  repository: lablabs/pod-deletion-cost-controller
   tag:
 
   pullPolicy: IfNotPresent
@@ -53,11 +53,37 @@ securityContext: {}
   # runAsNonRoot: true
   # runAsUser: 1000
 
+health:
+  enabled: true
+  port: 8001
+
+htt2:
+  enabled: true
+
+
+log:
+  # Development Mode defaults(encoder=consoleEncoder,logLevel=Debug,stackTraceLevel=Warn). Production Mode defaults(encoder=jsonEncoder,logLevel=Info,stackTraceLevel=Error) (default true)
+  devel: false
+  # Zap log encoding (one of 'json' or 'console')
+  encoder: console
+  # Zap Level to configure the verbosity of logging. Can be one of 'debug', 'info', 'error', 'panic'or any integer value > 0 which corresponds to custom debug levels of increasing verbosity
+  level: debug
+  # Zap Level at and above which stacktraces are captured (one of 'info', 'error', 'panic').
+  stackTraceLevel: error
+  # Zap time encoding (one of 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'). Defaults to 'epoch'.
+  timeEncoding: epoch
+
 metrics:
   ## @param metrics.enabled Enable exposing prometheus metrics
   enabled: true
   ## Operator metrics service parameters
   ##
+  tls:
+    ## Enable tls for metric endpoint
+    enabled: false
+    certPath: "/etc/certs/metrics"
+    certKey: "tls.key"
+    certName: "tls.crt"
   service:
     ## @param metrics.service.ports.metrics Metrics service Metrics port
     ##
@@ -131,15 +157,15 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
-# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+# This is to set up the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:
   httpGet:
-    path: /
-    port: http
+    path: /healthz
+    port: http-health
 readinessProbe:
   httpGet:
-    path: /
-    port: http
+    path: /readyz
+    port: http-health
 
 # This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
 autoscaling:
