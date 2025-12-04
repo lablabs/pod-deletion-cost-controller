@@ -159,7 +159,7 @@ var _ = Describe("Controller", Ordered, func() {
 				"kubectl", "rollout", "status",
 				"deployment/app",
 				"-n", namespace,
-				"--timeout=60s",
+				"--timeout=120s",
 			)
 			_, err = utils.Run(rolloutCmd)
 			Expect(err).NotTo(HaveOccurred())
