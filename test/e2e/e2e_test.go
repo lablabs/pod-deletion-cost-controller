@@ -173,8 +173,14 @@ var _ = Describe("Controller", Ordered, func() {
 				fmt.Sprintf("--timeout=%s", timeout.String()),
 			)
 			_, err = utils.Run(waitCmd)
+			if err != nil {
+				getCmd := exec.Command(
+					"kubectl", "get", "pods",
+					"-n", namespace, "-o", "json")
+				getOut, _ := utils.Run(getCmd)
+				fmt.Fprintf(GinkgoWriter, "%s\n", getOut)
+			}
 			Expect(err).NotTo(HaveOccurred())
-
 			By("getting latest rs")
 			rsNameCmd := exec.Command(
 				"kubectl", "get", "rs",
