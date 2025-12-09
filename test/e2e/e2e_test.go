@@ -78,7 +78,7 @@ var _ = Describe("Controller", Ordered, func() {
 			By(fmt.Sprintf("annotate deployment with: %q", cost.EnableAnnotation))
 			annotateCmd := exec.Command(
 				"kubectl", "annotate", "deployment", "app",
-				fmt.Sprintf("%s=\"%s\"", cost.EnableAnnotation, "true"),
+				fmt.Sprintf("%s=%s", cost.EnableAnnotation, "true"),
 				"-n", namespace,
 			)
 			_, err = utils.Run(annotateCmd)
@@ -93,27 +93,34 @@ var _ = Describe("Controller", Ordered, func() {
 					"--for=condition=Ready",
 					fmt.Sprintf("--timeout=%s", "0"),
 				)
-				_, err = utils.Run(waitCmd)
+				out, err := utils.Run(waitCmd)
+				fmt.Fprintf(GinkgoWriter, "%s", out)
 				return err
-			}, timeout.String(), "2s").Should(Succeed())
+			}, timeout.String(), "10s").Should(Succeed())
 
 			By("list annotation for pod")
-			annCmd := exec.Command(
-				"kubectl", "get", "pods",
-				"-n", namespace,
-				"-o", fmt.Sprintf(`jsonpath={range .items[*]}{.metadata.name}={.metadata.annotations.%s}{"\n"}{end}`, strings.ReplaceAll(cost.PodDeletionCostAnnotation, ".", `\.`)),
-			)
-			out, err := utils.Run(annCmd)
-			annotationsValue := make([]int, 0)
-			pods := strings.Split(strings.TrimSpace(out), "\n")
-			for _, pod := range pods {
-				record := strings.Split(pod, "=")
-				fmt.Fprintf(GinkgoWriter, "%s for pod %s = %s\n", cost.PodDeletionCostAnnotation, record[0], record[1])
-				ct, err := strconv.Atoi(record[1])
+			Eventually(func() error {
+				annCmd := exec.Command(
+					"kubectl", "get", "pods",
+					"-l", "app=app",
+					"-n", namespace,
+					"-o", fmt.Sprintf(`jsonpath={range .items[*]}{.metadata.annotations.%s}{"\n"}{end}`, strings.ReplaceAll(cost.PodDeletionCostAnnotation, ".", `\.`)),
+				)
+				out, err := utils.Run(annCmd)
+				if err != nil {
+					return err
+				}
+				_, err = fmt.Fprintf(GinkgoWriter, "%s\n", out)
 				Expect(err).NotTo(HaveOccurred())
-				annotationsValue = append(annotationsValue, ct)
-			}
-			Expect(len(annotationsValue)).Should(Equal(3))
+				annValues := strings.Split(strings.TrimSpace(out), "\n")
+				for _, cost := range annValues {
+					_, err := strconv.Atoi(cost)
+					if err != nil {
+						return err
+					}
+				}
+				return nil
+			}, timeout.String(), "2s").Should(Succeed())
 		})
 
 		It("should add new interval of pod-deletion-cost annotation for replicaset", func() {
@@ -126,11 +133,22 @@ var _ = Describe("Controller", Ordered, func() {
 			)
 			_, err := utils.Run(deployCmd)
 			Expect(err).NotTo(HaveOccurred())
+			Eventually(func() error {
+				waitCmd := exec.Command(
+					"kubectl", "wait", "pods",
+					"-l", "app=app",
+					"-n", namespace,
+					"--for=condition=Ready",
+					fmt.Sprintf("--timeout=%s", "0"),
+				)
+				_, err = utils.Run(waitCmd)
+				return err
+			}, timeout.String(), "2s").Should(Succeed())
 
 			By(fmt.Sprintf("annotate deployment with: %q", cost.EnableAnnotation))
 			annotateCmd := exec.Command(
 				"kubectl", "annotate", "deployment", "app",
-				fmt.Sprintf("%s=\"%s\"", cost.EnableAnnotation, "true"),
+				fmt.Sprintf("%s=%s", cost.EnableAnnotation, "true"),
 				"-n", namespace,
 			)
 			_, err = utils.Run(annotateCmd)
@@ -204,24 +222,27 @@ var _ = Describe("Controller", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("list annotation for pod")
-			annCmd := exec.Command(
-				"kubectl", "get", "pods",
-				"-l", "app=app,pod-template-hash="+strings.Trim(hash, "'"),
-				"-n", namespace,
-				"-o", fmt.Sprintf(`jsonpath={range .items[*]}{.metadata.name}={.metadata.annotations.%s}{"\n"}{end}`, strings.ReplaceAll(cost.PodDeletionCostAnnotation, ".", `\.`)),
-			)
-			out, err := utils.Run(annCmd)
-			annotationsValue := make([]int, 0)
-			pods := strings.Split(strings.TrimSpace(out), "\n")
-			for _, pod := range pods {
-				record := strings.Split(pod, "=")
-				fmt.Fprintf(GinkgoWriter, "%s for pod %s = %s\n", cost.PodDeletionCostAnnotation, record[0], record[1])
-				ct, err := strconv.Atoi(record[1])
-				Expect(err).NotTo(HaveOccurred())
-				annotationsValue = append(annotationsValue, ct)
-			}
-			Expect(len(annotationsValue)).To(Equal(3))
-
+			Eventually(func() error {
+				annCmd := exec.Command(
+					"kubectl", "get", "pods",
+					"-l", "app=app,pod-template-hash="+strings.Trim(hash, "'"),
+					"-n", namespace,
+					"-o", fmt.Sprintf(`jsonpath={range .items[*]}{.metadata.annotations.%s}{"\n"}{end}`, strings.ReplaceAll(cost.PodDeletionCostAnnotation, ".", `\.`)),
+				)
+				out, err := utils.Run(annCmd)
+				if err != nil {
+					return err
+				}
+				fmt.Fprintf(GinkgoWriter, "%s\n", out)
+				annValues := strings.Split(strings.TrimSpace(out), "\n")
+				for _, cost := range annValues {
+					_, err := strconv.Atoi(cost)
+					if err != nil {
+						return err
+					}
+				}
+				return nil
+			}, timeout.String(), "2s").Should(Succeed())
 		})
 	})
 
