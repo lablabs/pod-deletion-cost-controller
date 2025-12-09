@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/lablabs/pod-deletion-cost-controller/internal/cost"
 	"github.com/lablabs/pod-deletion-cost-controller/internal/zone"
@@ -66,7 +65,7 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if cost.IsPodDeletionCostAnnotation(pod) {
 		return ctrl.Result{}, nil
 	}
-	deploy, err := r.getDeployment(ctx, pod)
+	deploy, err := zone.GetDeploymentByPod(ctx, r.Client, pod)
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -78,47 +77,6 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	return ctrl.Result{}, nil
-}
-
-func (r *PodReconciler) getDeployment(ctx context.Context, pod *corev1.Pod) (*v1.Deployment, error) {
-	for _, owner := range pod.OwnerReferences {
-		if owner.Kind == "ReplicaSet" && *owner.Controller {
-			rs := &v1.ReplicaSet{}
-			if err := r.Get(ctx, types.NamespacedName{Namespace: pod.Namespace, Name: owner.Name}, rs); err != nil {
-				return nil, client.IgnoreNotFound(err)
-			}
-
-			for _, rsOwner := range rs.OwnerReferences {
-				if rsOwner.Kind == "Deployment" && *rsOwner.Controller {
-					dep := &v1.Deployment{}
-					if err := r.Get(ctx, types.NamespacedName{Namespace: pod.Namespace, Name: rsOwner.Name}, dep); err != nil {
-						return nil, client.IgnoreNotFound(err)
-					}
-					return dep, nil
-				}
-			}
-		}
-	}
-	return nil, nil
-}
-
-func CreatePodToDeploymentIndex(mgr ctrl.Manager) error {
-	return mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Pod{}, "spec.deploymentName", func(o client.Object) []string {
-		pod := o.(*corev1.Pod)
-		for _, owner := range pod.OwnerReferences {
-			if owner.Kind == "ReplicaSet" {
-				rs := &v1.ReplicaSet{}
-				if err := mgr.GetClient().Get(context.Background(), client.ObjectKey{Namespace: pod.Namespace, Name: owner.Name}, rs); err == nil {
-					for _, owner2 := range rs.OwnerReferences {
-						if owner2.Kind == "Deployment" {
-							return []string{owner2.Name}
-						}
-					}
-				}
-			}
-		}
-		return nil
-	})
 }
 
 func AcceptDeploymentPredicate() predicate.Predicate {
@@ -147,7 +105,7 @@ func AcceptPodPredicate(c client.Client) predicate.Predicate {
 		if cost.IsPodDeletionCostAnnotation(pod) {
 			return false
 		}
-		dep, err := GetDeploymentByPod(context.Background(), c, pod)
+		dep, err := zone.GetDeploymentByPod(context.Background(), c, pod)
 		if err != nil {
 			return false
 		}
@@ -157,22 +115,18 @@ func AcceptPodPredicate(c client.Client) predicate.Predicate {
 
 func (r *PodReconciler) mapDeploymentToPods(ctx context.Context, obj client.Object) []reconcile.Request {
 	dep := obj.(*v1.Deployment)
-
 	if !cost.IsEnableAnnotation(dep) {
 		return nil
 	}
-
-	// 1) Get all ReplicaSets for this Deployment
 	rsList := &v1.ReplicaSetList{}
-	if err := r.List(ctx, rsList, client.MatchingFields{"spec.deploymentUID": string(dep.UID)}); err != nil {
+	if err := r.List(ctx, rsList, client.MatchingFields{zone.RsToDeploymentIndex: string(dep.UID)}); err != nil {
 		return nil
 	}
 
 	reqs := make([]reconcile.Request, 0)
-	// 2) For each ReplicaSet, get all Pods using Pod->RS index
 	for _, rs := range rsList.Items {
 		podList := &corev1.PodList{}
-		if err := r.List(ctx, podList, client.MatchingFields{"spec.rsUID": string(rs.UID)}); err != nil {
+		if err := r.List(ctx, podList, client.MatchingFields{zone.PodToRSIndex: string(rs.UID)}); err != nil {
 			continue
 		}
 		for _, pod := range podList.Items {
@@ -189,16 +143,10 @@ func (r *PodReconciler) mapDeploymentToPods(ctx context.Context, obj client.Obje
 }
 
 func (r *PodReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if err := CreatePodToDeploymentIndex(mgr); err != nil {
+	if err := zone.CreatePodToRSIndex(mgr); err != nil {
 		return err
 	}
-	if err := zone.CreatePodToOwnerRSIndex(mgr); err != nil {
-		return err
-	}
-	if err := CreatePodToRSIndex(mgr); err != nil {
-		return err
-	}
-	if err := CreateRsToDeploymentIndex(mgr); err != nil {
+	if err := zone.CreateRsToDeploymentIndex(mgr); err != nil {
 		return err
 	}
 	return ctrl.NewControllerManagedBy(mgr).
@@ -207,65 +155,4 @@ func (r *PodReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&v1.Deployment{}, handler.EnqueueRequestsFromMapFunc(r.mapDeploymentToPods), builder.WithPredicates(AcceptDeploymentPredicate())).
 		Watches(&corev1.Node{}, handler.Funcs{}).
 		Complete(r)
-}
-
-func CreatePodToRSIndex(mgr ctrl.Manager) error {
-	return mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Pod{}, "spec.rsUID", func(obj client.Object) []string {
-		pod := obj.(*corev1.Pod)
-		for _, owner := range pod.OwnerReferences {
-			if owner.Kind == "ReplicaSet" {
-				return []string{string(owner.UID)}
-			}
-		}
-		return nil
-	})
-}
-
-func CreateRsToDeploymentIndex(mgr ctrl.Manager) error {
-	return mgr.GetFieldIndexer().IndexField(context.Background(), &v1.ReplicaSet{}, "spec.deploymentUID", func(obj client.Object) []string {
-		rs := obj.(*v1.ReplicaSet)
-		for _, owner := range rs.OwnerReferences {
-			if owner.Kind == "Deployment" {
-				return []string{string(owner.UID)}
-			}
-		}
-		return nil
-	})
-}
-
-func GetDeploymentByPod(ctx context.Context, c client.Client, pod *corev1.Pod) (*v1.Deployment, error) {
-	var rsName string
-	for _, owner := range pod.OwnerReferences {
-		if owner.Kind == "ReplicaSet" {
-			rsName = owner.Name
-			break
-		}
-	}
-	if rsName == "" {
-		return nil, fmt.Errorf("pod %s/%s has no owning ReplicaSet", pod.Namespace, pod.Name)
-	}
-
-	rs := &v1.ReplicaSet{}
-	if err := c.Get(ctx, types.NamespacedName{Namespace: pod.Namespace, Name: rsName}, rs); err != nil {
-		return nil, fmt.Errorf("get replicaset %s/%s: %w", pod.Namespace, rsName, err)
-	}
-
-	// 2) Find owning Deployment
-	var deployName string
-	for _, owner := range rs.OwnerReferences {
-		if owner.Kind == "Deployment" {
-			deployName = owner.Name
-			break
-		}
-	}
-	if deployName == "" {
-		return nil, fmt.Errorf("replicaset %s/%s has no owning Deployment", rs.Namespace, rs.Name)
-	}
-
-	deploy := &v1.Deployment{}
-	if err := c.Get(ctx, types.NamespacedName{Namespace: rs.Namespace, Name: deployName}, deploy); err != nil {
-		return nil, fmt.Errorf("get deployment %s/%s: %w", rs.Namespace, deployName, err)
-	}
-
-	return deploy, nil
 }

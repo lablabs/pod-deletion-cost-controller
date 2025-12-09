@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	PodToOwnerRSIndex = "rsOwnerUID"
+	PodToRSIndex        = "spec.rsUID"
+	RsToDeploymentIndex = "spec.deploymentUID"
 )
 
 func NewHandler(client client.Client, option ...Option) (*Handler, error) {
@@ -103,24 +104,6 @@ func (h *Handler) GetPodAnnotation(ctx context.Context, pod *corev1.Pod, deploym
 	return GetSpreadByAnnotationValue(node, deployment), nil
 }
 
-func CreatePodToOwnerRSIndex(mgr ctrl.Manager) error {
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(),
-		&corev1.Pod{}, PodToOwnerRSIndex,
-		func(obj client.Object) []string {
-			pod := obj.(*corev1.Pod)
-			for _, owner := range pod.OwnerReferences {
-				if owner.Kind == "ReplicaSet" {
-					return []string{string(owner.UID)}
-				}
-			}
-			return nil
-		},
-	); err != nil {
-		return err
-	}
-	return nil
-}
-
 func ListPodsByOwnerRSIndex(ctx context.Context, c client.Client, pod *corev1.Pod, list *corev1.PodList) error {
 	var rsUID types.UID
 	for _, owner := range pod.OwnerReferences {
@@ -136,10 +119,71 @@ func ListPodsByOwnerRSIndex(ctx context.Context, c client.Client, pod *corev1.Po
 
 	err := c.List(ctx, list,
 		client.InNamespace(pod.Namespace),
-		client.MatchingFields{PodToOwnerRSIndex: string(rsUID)},
+		client.MatchingFields{PodToRSIndex: string(rsUID)},
 	)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func CreatePodToRSIndex(mgr ctrl.Manager) error {
+	return mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Pod{}, PodToRSIndex, func(obj client.Object) []string {
+		pod := obj.(*corev1.Pod)
+		for _, owner := range pod.OwnerReferences {
+			if owner.Kind == "ReplicaSet" {
+				return []string{string(owner.UID)}
+			}
+		}
+		return nil
+	})
+}
+
+func CreateRsToDeploymentIndex(mgr ctrl.Manager) error {
+	return mgr.GetFieldIndexer().IndexField(context.Background(), &v1.ReplicaSet{}, RsToDeploymentIndex, func(obj client.Object) []string {
+		rs := obj.(*v1.ReplicaSet)
+		for _, owner := range rs.OwnerReferences {
+			if owner.Kind == "Deployment" {
+				return []string{string(owner.UID)}
+			}
+		}
+		return nil
+	})
+}
+
+func GetDeploymentByPod(ctx context.Context, c client.Client, pod *corev1.Pod) (*v1.Deployment, error) {
+	var rsName string
+	for _, owner := range pod.OwnerReferences {
+		if owner.Kind == "ReplicaSet" {
+			rsName = owner.Name
+			break
+		}
+	}
+	if rsName == "" {
+		return nil, fmt.Errorf("pod %s/%s has no owning ReplicaSet", pod.Namespace, pod.Name)
+	}
+
+	rs := &v1.ReplicaSet{}
+	if err := c.Get(ctx, types.NamespacedName{Namespace: pod.Namespace, Name: rsName}, rs); err != nil {
+		return nil, fmt.Errorf("get replicaset %s/%s: %w", pod.Namespace, rsName, err)
+	}
+
+	// 2) Find owning Deployment
+	var deployName string
+	for _, owner := range rs.OwnerReferences {
+		if owner.Kind == "Deployment" {
+			deployName = owner.Name
+			break
+		}
+	}
+	if deployName == "" {
+		return nil, fmt.Errorf("replicaset %s/%s has no owning Deployment", rs.Namespace, rs.Name)
+	}
+
+	deploy := &v1.Deployment{}
+	if err := c.Get(ctx, types.NamespacedName{Namespace: rs.Namespace, Name: deployName}, deploy); err != nil {
+		return nil, fmt.Errorf("get deployment %s/%s: %w", rs.Namespace, deployName, err)
+	}
+
+	return deploy, nil
 }
