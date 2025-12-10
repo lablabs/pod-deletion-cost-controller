@@ -95,6 +95,18 @@ helm upgrade --install -n operations \
     --version ${VERSION}
 ```
 
+# How it works ? 
+
+Configuration of `controller.kubernetes.io/pod-deletion-cost` is based on following steps
+
+1. Controller watch for `pod-deletion-cost.lablabs.io/enabled: "true"` on Deployment and for Pod which is owned by ReplicaSet and Deployment. Pod -> is owned by -> RS -> is owned by -> Deployment
+2. If Pod already contains `controller.kubernetes.io/pod-deletion-cost` skip
+3. If not, find Node's zone (`topology.kubernetes.io/zone`) where Pod is scheduled, 
+4. List all Pods which belongs to the same zone `topology.kubernetes.io/zone`
+5. Iterate over Pods from step 4 and create set of used `controller.kubernetes.io/pod-deletion-cost` values
+6. Iterate over MaxInt32 up to zero and find first free value in set from step 5
+7. Update this value into Pod came from Reconcile loop from step 3
+
 # Development
 
 Build with [kubebuilder](https://book.kubebuilder.io)

@@ -36,3 +36,5 @@ go.work.sum
 
 # For testing on k3s cluster
 .k3s/
+
+*.tgz
