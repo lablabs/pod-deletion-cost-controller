@@ -27,4 +27,5 @@ rules:
       - pods
     verbs:
       - update
+      - patch
 {{- end }}

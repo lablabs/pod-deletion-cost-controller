@@ -4,80 +4,62 @@ import (
 	"math"
 	"testing"
 
-	"github.com/lablabs/pod-deletion-cost-controller/internal/cost"
 	"github.com/lablabs/pod-deletion-cost-controller/internal/zone"
-	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestPodsWithCostAnnotation_LastAppliedCost(t *testing.T) {
+func TestDeletionCostPool_FindNextFree(t *testing.T) {
 	tests := []struct {
-		name     string
-		list     zone.DeletionCostList
-		expected int
+		name        string
+		initial     []int
+		want        int
+		expectError bool
 	}{
 		{
-			name:     "empty slice → MaxInt32",
-			list:     zone.NewDeletionCostList([]corev1.Pod{}),
-			expected: math.MaxInt32,
+			name:        "empty pool -> returns MaxInt32",
+			initial:     []int{},
+			want:        math.MaxInt32,
+			expectError: false,
 		},
 		{
-			name: "nil annotations → MaxInt32",
-			list: zone.NewDeletionCostList([]corev1.Pod{
-				corev1.Pod{
-					ObjectMeta: v1.ObjectMeta{
-						Annotations: nil,
-					},
-				},
-			}),
-			expected: math.MaxInt32,
+			name:        "one value missing MaxInt32 -> returns MaxInt32",
+			initial:     []int{100},
+			want:        math.MaxInt32,
+			expectError: false,
 		},
 		{
-			name: "annotation missing → MaxInt32",
-			list: zone.NewDeletionCostList([]corev1.Pod{
-				{
-					ObjectMeta: v1.ObjectMeta{
-						Annotations: map[string]string{},
-					},
-				},
-			}),
-			expected: math.MaxInt32,
+			name:        "MaxInt32 is taken -> returns next free below",
+			initial:     []int{math.MaxInt32, math.MaxInt32 - 1},
+			want:        math.MaxInt32 - 2,
+			expectError: false,
 		},
 		{
-			name: "annotation invalid (not int) → MaxInt32",
-			list: zone.NewDeletionCostList([]corev1.Pod{
-				{
-					ObjectMeta: v1.ObjectMeta{
-						Annotations: map[string]string{
-							cost.PodDeletionCostAnnotation: "abc",
-						},
-					},
-				},
-			}),
-			expected: math.MaxInt32,
-		},
-		{
-			name: "valid annotation 42 cost → MaxInt32",
-			list: zone.NewDeletionCostList([]corev1.Pod{
-				{
-					ObjectMeta: v1.ObjectMeta{
-						Annotations: map[string]string{
-							cost.PodDeletionCostAnnotation: "42",
-						},
-					},
-				},
-			}),
-			expected: math.MaxInt32,
+			name:        "scattered pool -> returns highest missing number",
+			initial:     []int{10, 20, math.MaxInt32 - 1},
+			want:        math.MaxInt32,
+			expectError: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := tt.list.FindNext()
-			assert.NoError(t, err)
-			if c != tt.expected {
-				t.Fatalf("expected %d, got %d", tt.expected, c)
+			pool := zone.NewDeletionCostPool()
+			pool.AddValues(tt.initial)
+
+			got, err := pool.FindNextFree()
+			if (err != nil) != tt.expectError {
+				t.Fatalf("expected error=%v, got %v", tt.expectError, err)
+			}
+			if err != nil {
+				return
+			}
+
+			if got != tt.want {
+				t.Fatalf("expected cost=%d, got %d", tt.want, got)
+			}
+
+			// Ensure returned slot is marked as used
+			if _, exists := pool[got]; !exists {
+				t.Fatalf("returned slot %d was not stored in pool", got)
 			}
 		})
 	}

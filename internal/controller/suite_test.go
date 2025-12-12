@@ -14,15 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controller
+package controller_test
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"testing"
 
+	"github.com/lablabs/pod-deletion-cost-controller/internal/controller"
 	"github.com/lablabs/pod-deletion-cost-controller/internal/zone"
+	"github.com/lablabs/pod-deletion-cost-controller/test/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
@@ -70,12 +70,13 @@ var _ = BeforeSuite(func() {
 	//
 	// 2️⃣ Start test environment
 	//
+	binaryPath, err := utils.GetK8sBinaryDir(5, []string{"bin", "k8s"})
+	Expect(err).NotTo(HaveOccurred())
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases")},
 		ErrorIfCRDPathMissing: false,
+		BinaryAssetsDirectory: binaryPath,
 	}
 
-	var err error
 	cfg, err = testEnv.Start()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
@@ -94,22 +95,16 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	//
-	// 5️⃣ Register your controller with manager
-	//
-	handler, err := zone.NewHandler(mgr.GetClient())
-	if err != nil {
-		os.Exit(1)
-	}
+	moduleMng := controller.NewModuleManager()
+	err = zone.Register(moduleMng, mgr.GetClient())
 	Expect(err).NotTo(HaveOccurred())
-	err = (&PodReconciler{
+	err = (&controller.PodReconciler{
 		Client:  mgr.GetClient(),
 		Scheme:  mgr.GetScheme(),
-		Handler: handler,
+		Manager: moduleMng,
 	}).SetupWithManager(mgr)
 	Expect(err).ToNot(HaveOccurred())
 
-	//
 	// 6️⃣ Start the manager in background
 	//
 	go func() {
@@ -124,26 +119,3 @@ var _ = AfterSuite(func() {
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })
-
-// getFirstFoundEnvTestBinaryDir locates the first binary in the specified path.
-// ENVTEST-based tests depend on specific binaries, usually located in paths set by
-// controller-runtime. When running tests directly (e.g., via an IDE) without using
-// Makefile targets, the 'BinaryAssetsDirectory' must be explicitly configured.
-//
-// This function streamlines the process by finding the required binaries, similar to
-// setting the 'KUBEBUILDER_ASSETS' environment variable. To ensure the binaries are
-// properly set up, run 'make setup-envtest' beforehand.
-func getFirstFoundEnvTestBinaryDir() string {
-	basePath := filepath.Join("..", "..", "bin", "k8s")
-	entries, err := os.ReadDir(basePath)
-	if err != nil {
-		logf.Log.Error(err, "Failed to read directory", "path", basePath)
-		return ""
-	}
-	for _, entry := range entries {
-		if entry.IsDir() {
-			return filepath.Join(basePath, entry.Name())
-		}
-	}
-	return ""
-}

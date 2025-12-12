@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lablabs/pod-deletion-cost-controller/internal/cost"
+	"github.com/lablabs/pod-deletion-cost-controller/internal/controller"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -75,10 +75,10 @@ var _ = Describe("Controller", Ordered, func() {
 			_, err := utils.Run(deployCmd)
 			Expect(err).NotTo(HaveOccurred())
 
-			By(fmt.Sprintf("annotate deployment with: %q", cost.EnableAnnotation))
+			By(fmt.Sprintf("annotate deployment with: %q", controller.EnableAnnotation))
 			annotateCmd := exec.Command(
 				"kubectl", "annotate", "deployment", "app",
-				fmt.Sprintf("%s=%s", cost.EnableAnnotation, "true"),
+				fmt.Sprintf("%s=%s", controller.EnableAnnotation, "true"),
 				"-n", namespace,
 			)
 			_, err = utils.Run(annotateCmd)
@@ -104,7 +104,7 @@ var _ = Describe("Controller", Ordered, func() {
 					"kubectl", "get", "pods",
 					"-l", "app=app",
 					"-n", namespace,
-					"-o", fmt.Sprintf(`jsonpath={range .items[*]}{.metadata.annotations.%s}{"\n"}{end}`, strings.ReplaceAll(cost.PodDeletionCostAnnotation, ".", `\.`)),
+					"-o", fmt.Sprintf(`jsonpath={range .items[*]}{.metadata.annotations.%s}{"\n"}{end}`, strings.ReplaceAll(controller.PodDeletionCostAnnotation, ".", `\.`)),
 				)
 				out, err := utils.Run(annCmd)
 				if err != nil {
@@ -145,10 +145,10 @@ var _ = Describe("Controller", Ordered, func() {
 				return err
 			}, timeout.String(), "2s").Should(Succeed())
 
-			By(fmt.Sprintf("annotate deployment with: %q", cost.EnableAnnotation))
+			By(fmt.Sprintf("annotate deployment with: %q", controller.EnableAnnotation))
 			annotateCmd := exec.Command(
 				"kubectl", "annotate", "deployment", "app",
-				fmt.Sprintf("%s=%s", cost.EnableAnnotation, "true"),
+				fmt.Sprintf("%s=%s", controller.EnableAnnotation, "true"),
 				"-n", namespace,
 			)
 			_, err = utils.Run(annotateCmd)
@@ -227,7 +227,7 @@ var _ = Describe("Controller", Ordered, func() {
 					"kubectl", "get", "pods",
 					"-l", "app=app,pod-template-hash="+strings.Trim(hash, "'"),
 					"-n", namespace,
-					"-o", fmt.Sprintf(`jsonpath={range .items[*]}{.metadata.annotations.%s}{"\n"}{end}`, strings.ReplaceAll(cost.PodDeletionCostAnnotation, ".", `\.`)),
+					"-o", fmt.Sprintf(`jsonpath={range .items[*]}{.metadata.annotations.%s}{"\n"}{end}`, strings.ReplaceAll(controller.PodDeletionCostAnnotation, ".", `\.`)),
 				)
 				out, err := utils.Run(annCmd)
 				if err != nil {

@@ -196,16 +196,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	//cost
-	handler, err := zone.NewHandler(mgr.GetClient())
+	moduleMng := controller.NewModuleManager()
+	err = zone.Register(moduleMng, mgr.GetClient())
 	if err != nil {
-		setupLog.Error(err, "unable to create cost handler")
+		setupLog.Error(err, "unable to register zone")
 		os.Exit(1)
 	}
 	if err := (&controller.PodReconciler{
 		Client:  mgr.GetClient(),
 		Scheme:  mgr.GetScheme(),
-		Handler: handler,
+		Manager: moduleMng,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Pod")
 		os.Exit(1)

@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controller
+package controller_test
 
 import (
 	"context"
 
-	"github.com/lablabs/pod-deletion-cost-controller/internal/cost"
+	"github.com/lablabs/pod-deletion-cost-controller/internal/controller"
 	"github.com/lablabs/pod-deletion-cost-controller/test/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -42,7 +42,7 @@ var _ = Describe("PodDeletionCost Controller", func() {
 					Namespace: "default",
 					Labels:    map[string]string{"app": "nginx"},
 					Annotations: map[string]string{
-						cost.EnableAnnotation: "true",
+						controller.EnableAnnotation: "true",
 					},
 				},
 				Spec: appsv1.DeploymentSpec{
