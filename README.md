@@ -95,27 +95,17 @@ helm upgrade --install -n operations \
     --version ${VERSION}
 ```
 
-# How it works ? 
+# How it works ?
 
 Configuration of `controller.kubernetes.io/pod-deletion-cost` is based on following steps
 
 1. Controller watch for `pod-deletion-cost.lablabs.io/enabled: "true"` on Deployment and for Pod which is owned by ReplicaSet and Deployment. Pod -> is owned by -> RS -> is owned by -> Deployment
 2. If Pod already contains `controller.kubernetes.io/pod-deletion-cost` skip
-3. If not, find Node's zone (`topology.kubernetes.io/zone`) where Pod is scheduled, 
+3. If not, find Node's zone (`topology.kubernetes.io/zone`) where Pod is scheduled,
 4. List all Pods which belongs to the same zone `topology.kubernetes.io/zone`
 5. Iterate over Pods from step 4 and create set of used `controller.kubernetes.io/pod-deletion-cost` values
 6. Iterate over MaxInt32 up to zero and find first free value in set from step 5
 7. Update this value into Pod came from Reconcile loop from step 3
-
-
-
-# Development
-
-Build with [kubebuilder](https://book.kubebuilder.io)
-
-Dependencies:
-
-- [Kind](https://kind.sigs.k8s.io/) - for running tests. It's not downloaded automatically as the other tools in bin folder
 
 ### Add new algorithm
 
@@ -140,13 +130,27 @@ func Register(log logr.Logger, r Registrator, client client.Client, algoTypes []
 }
 ```
 
-Registration of module is done in [./cmd/main.go](./cmd/main.go) 
+Registration of module is done in [./cmd/main.go](./cmd/main.go)
 ```go
 //configuration part for algorithms
 moduleMng := controller.NewModuleManager()
 //Register new algo handler here
 err = zone.Register(logger, moduleMng, mgr.GetClient(), algoType)
 ```
+
+# Development
+
+Build with [kubebuilder](https://book.kubebuilder.io)
+
+Dependencies:
+
+- [Kind](https://kind.sigs.k8s.io/) - for running tests. It's not downloaded automatically as the other tools in bin folder
+
+### [PRE-COMMIT](https://pre-commit.com/#install)
+
+- install `pre-commit` binary if not installed by `asdf`
+- switch to tf-infra git folder
+- run `pre-commit install` to initialize pre-commit environment based on `.pre-commit-config.yaml` configuration
 
 # Test
 
