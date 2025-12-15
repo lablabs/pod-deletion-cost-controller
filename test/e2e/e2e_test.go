@@ -221,7 +221,7 @@ var _ = Describe("Controller", Ordered, func() {
 			hash, err := utils.Run(hashCmd)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("list annotation for pod")
+			By("list annotation for pods")
 			Eventually(func() error {
 				annCmd := exec.Command(
 					"kubectl", "get", "pods",

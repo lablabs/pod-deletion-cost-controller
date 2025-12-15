@@ -117,6 +117,37 @@ Dependencies:
 
 - [Kind](https://kind.sigs.k8s.io/) - for running tests. It's not downloaded automatically as the other tools in bin folder
 
+### Add new algorithm
+
+You can easily add new algorithm into controller. Take a look at [./internal/zone/module.go](./internal/zone/module.go)
+```go
+type Registrator interface {
+    AddModule(module module.Handler) error
+}
+
+func Register(log logr.Logger, r Registrator, client client.Client, algoTypes []string) error {
+    if slices.Contains(algoTypes, Name) || len(algoTypes) == 0 {
+        h := NewHandler(client)
+        err := r.AddModule(h)
+        if err != nil {
+            return fmt.Errorf("register zone module failed: %w", err)
+        }
+        log.WithValues("module", Name).Info("registered")
+        return nil
+    }
+    log.V(2).WithValues("module", Name).Info("NOT registered")
+    return nil
+}
+```
+
+Registration of module is done in [./cmd/main.go](./cmd/main.go) 
+```go
+//configuration part for algorithms
+moduleMng := controller.NewModuleManager()
+//Register new algo handler here
+err = zone.Register(logger, moduleMng, mgr.GetClient(), algoType)
+```
+
 # Test
 
 ```bash
