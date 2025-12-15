@@ -55,7 +55,8 @@ func TestControllers(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+	log := zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true))
+	logf.SetLogger(log)
 
 	ctx, cancel = context.WithCancel(context.Background())
 
@@ -96,7 +97,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	moduleMng := controller.NewModuleManager()
-	err = zone.Register(moduleMng, mgr.GetClient())
+	err = zone.Register(log, moduleMng, mgr.GetClient(), []string{})
 	Expect(err).NotTo(HaveOccurred())
 	err = (&controller.PodReconciler{
 		Client:  mgr.GetClient(),

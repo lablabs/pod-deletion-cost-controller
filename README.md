@@ -107,6 +107,8 @@ Configuration of `controller.kubernetes.io/pod-deletion-cost` is based on follow
 6. Iterate over MaxInt32 up to zero and find first free value in set from step 5
 7. Update this value into Pod came from Reconcile loop from step 3
 
+
+
 # Development
 
 Build with [kubebuilder](https://book.kubebuilder.io)
