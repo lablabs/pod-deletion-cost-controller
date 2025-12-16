@@ -107,6 +107,8 @@ Configuration of `controller.kubernetes.io/pod-deletion-cost` is based on follow
 6. Iterate over MaxInt32 up to zero and find first free value in set from step 5
 7. Update this value into Pod came from Reconcile loop from step 3
 
+![pod-deletion-cost-controller-flow](./docs/images/pod-deletion-cost-controller-flow.gif)
+
 ### Add new algorithm
 
 You can easily add new algorithm into controller. Take a look at [./internal/zone/module.go](./internal/zone/module.go)

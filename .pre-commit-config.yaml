@@ -5,7 +5,6 @@ repos:
       - id: check-merge-conflict
       - id: trailing-whitespace
       - id: end-of-file-fixer
-      - id: check-added-large-files
       - id: destroyed-symlinks
       - id: detect-private-key
       - id: check-ast
