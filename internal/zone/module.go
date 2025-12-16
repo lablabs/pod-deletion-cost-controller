@@ -10,13 +10,16 @@ import (
 )
 
 const (
+	//Name of module
 	Name = "zone"
 )
 
+// Registrator define controller manager
 type Registrator interface {
 	AddModule(module module.Handler) error
 }
 
+// Register register zone module
 func Register(log logr.Logger, r Registrator, client client.Client, algoTypes []string) error {
 	if slices.Contains(algoTypes, Name) || len(algoTypes) == 0 {
 		h := NewHandler(client)

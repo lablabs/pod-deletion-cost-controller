@@ -76,6 +76,7 @@ func GetProjectDir() (string, error) {
 	return wd, nil
 }
 
+// Pointer create pointer
 func Pointer[T any](v T) *T {
 	return &v
 }

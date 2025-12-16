@@ -1,20 +1,24 @@
 version: "2"
-
 run:
-  timeout: 5m
-
+  tests: false
 linters:
   enable:
+    - revive
     - govet
     - staticcheck
     - errcheck
     - ineffassign
-    - revive
-
-formatters:
-  enable:
-    - gofmt
-    - goimports
+  exclusions:
+    rules:
+      - linters:
+          - revive
+        path: (.+)_test\.go
+      - linters:
+          - revive
+        path: ^test/
+      - linters:
+          - revive
+        text: "package-comments: should have a package comment"
 
 issues:
   max-issues-per-linter: 0

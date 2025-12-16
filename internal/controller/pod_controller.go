@@ -50,7 +50,6 @@ type PodReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.22.1/pkg/reconcile
 // Reconcile is called for each Pod event
-
 func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logr.FromContext(ctx)
 
@@ -76,17 +75,18 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	return ctrl.Result{}, nil
 }
 
+// SetupWithManager configure PodReconciler
 func (r *PodReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if err := CreatePodToRSIndex(mgr); err != nil {
+	if err := createPodToRSIndex(mgr); err != nil {
 		return err
 	}
-	if err := CreateRsToDeploymentIndex(mgr); err != nil {
+	if err := createRsToDeploymentIndex(mgr); err != nil {
 		return err
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.Pod{}, builder.WithPredicates(PodPredicate())).
 		Watches(&v1.ReplicaSet{}, handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(), &v1.Deployment{}, handler.OnlyControllerOwner())).
-		Watches(&v1.Deployment{}, handler.EnqueueRequestsFromMapFunc(MapDeploymentToPodReconcileFunc(r.Client)), builder.WithPredicates(DeploymentPredicate())).
+		Watches(&v1.Deployment{}, handler.EnqueueRequestsFromMapFunc(mapDeploymentToPodReconcileFunc(r.Client)), builder.WithPredicates(DeploymentPredicate())).
 		Watches(&corev1.Node{}, handler.Funcs{}).
 		Complete(r)
 }

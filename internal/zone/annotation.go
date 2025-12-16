@@ -6,12 +6,13 @@ import (
 )
 
 const (
-	//TopologyZoneAnnotation Default annotation used by Kubernetes
+	// TopologyZoneAnnotation Default annotation used by Kubernetes
 	TopologyZoneAnnotation = "topology.kubernetes.io/zone"
-	//SpreadByAnnotation overrides name of annotation used for spreading pod-deletion-cost logic
+	// SpreadByAnnotation overrides name of annotation used for spreading pod-deletion-cost logic
 	SpreadByAnnotation = "pod-deletion-cost.lablabs.io/spread-by"
 )
 
+// GetSpreadByAnnotation get SpreadByAnnotation annotation
 func GetSpreadByAnnotation(node *v1.Node, deployment *v2.Deployment) string {
 	if deployment.Annotations == nil {
 		return node.Labels[TopologyZoneAnnotation]

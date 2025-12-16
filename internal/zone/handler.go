@@ -14,11 +14,13 @@ import (
 )
 
 const (
+	// TypeAnnotation name of algo type
 	TypeAnnotation = "zone"
 	// DefaultHandlerTypeAnnotation define default, it means, alg type is not defined
 	DefaultHandlerTypeAnnotation = ""
 )
 
+// NewHandler create new Handler
 func NewHandler(client client.Client) *Handler {
 	return &Handler{
 		client: client,
@@ -26,15 +28,18 @@ func NewHandler(client client.Client) *Handler {
 	}
 }
 
+// Handler handles reconcile loop for Pod/Deployment
 type Handler struct {
 	client client.Client
 	cache  *expectations.Cache[types.UID, int]
 }
 
+// AcceptType return accepted type of reconcile algorithm
 func (h *Handler) AcceptType() []string {
 	return []string{TypeAnnotation, DefaultHandlerTypeAnnotation}
 }
 
+// Handle handles main Reconcile for zone
 func (h *Handler) Handle(ctx context.Context, log logr.Logger, pod *corev1.Pod, dep *v1.Deployment) error {
 
 	if controller.HasPodDeletionCost(pod) {
@@ -48,7 +53,7 @@ func (h *Handler) Handle(ctx context.Context, log logr.Logger, pod *corev1.Pod, 
 	}
 
 	pods := make([]corev1.Pod, 0)
-	err := h.ListPodsInZone(ctx, log, dep, pod, &pods)
+	err := h.listPodsInZone(ctx, log, dep, pod, &pods)
 	if err != nil {
 		return fmt.Errorf("unable to list pods: %w", err)
 	}
@@ -79,19 +84,19 @@ func (h *Handler) Handle(ctx context.Context, log logr.Logger, pod *corev1.Pod, 
 	return nil
 }
 
-func (h *Handler) ListPodsInZone(
+func (h *Handler) listPodsInZone(
 	ctx context.Context,
 	log logr.Logger,
 	deployment *v1.Deployment,
 	pod *corev1.Pod,
 	pods *[]corev1.Pod,
 ) error {
-	podRecZoneAnn, err := h.GetPodAnnotation(ctx, pod, deployment)
+	podRecZoneAnn, err := h.getPodAnnotation(ctx, pod, deployment)
 	if err != nil {
 		return fmt.Errorf("unable to get pod annotation: %w", err)
 	}
 	podList := &corev1.PodList{}
-	err = ListPodsByOwnerRSIndex(ctx, h.client, pod, podList)
+	err = listPodsByOwnerRSIndex(ctx, h.client, pod, podList)
 	if err != nil {
 		return fmt.Errorf("unable to list pods by rs: %w", err)
 	}
@@ -111,7 +116,7 @@ func (h *Handler) ListPodsInZone(
 	return nil
 }
 
-func (h *Handler) GetPodAnnotation(ctx context.Context, pod *corev1.Pod, deployment *v1.Deployment) (string, error) {
+func (h *Handler) getPodAnnotation(ctx context.Context, pod *corev1.Pod, deployment *v1.Deployment) (string, error) {
 	//Get zone for reconcile POD
 	node := &corev1.Node{}
 	if err := h.client.Get(ctx, types.NamespacedName{
@@ -122,7 +127,7 @@ func (h *Handler) GetPodAnnotation(ctx context.Context, pod *corev1.Pod, deploym
 	return GetSpreadByAnnotation(node, deployment), nil
 }
 
-func ListPodsByOwnerRSIndex(ctx context.Context, c client.Client, pod *corev1.Pod, list *corev1.PodList) error {
+func listPodsByOwnerRSIndex(ctx context.Context, c client.Client, pod *corev1.Pod, list *corev1.PodList) error {
 	var rsUID types.UID
 	for _, owner := range pod.OwnerReferences {
 		if owner.Kind == "ReplicaSet" {

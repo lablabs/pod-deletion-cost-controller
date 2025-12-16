@@ -14,12 +14,14 @@ import (
 )
 
 const (
-	PodToRSIndex        = "spec.rsUID"
+	//PodToRSIndex index name for Pod to Rs
+	PodToRSIndex = "spec.rsUID"
+	// RsToDeploymentIndex index name for Rs to Deployment
 	RsToDeploymentIndex = "spec.deploymentUID"
 )
 
-// CreatePodToRSIndex create index for mapping Pod to ReplicaSet owner reference UID
-func CreatePodToRSIndex(mgr ctrl.Manager) error {
+// createPodToRSIndex create index for mapping Pod to ReplicaSet owner reference UID
+func createPodToRSIndex(mgr ctrl.Manager) error {
 	return mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Pod{}, PodToRSIndex, func(obj client.Object) []string {
 		pod := obj.(*corev1.Pod)
 		for _, owner := range pod.OwnerReferences {
@@ -31,8 +33,8 @@ func CreatePodToRSIndex(mgr ctrl.Manager) error {
 	})
 }
 
-// CreateRsToDeploymentIndex create index for mapping ReplicaSet owner reference UID
-func CreateRsToDeploymentIndex(mgr ctrl.Manager) error {
+// createRsToDeploymentIndex create index for mapping ReplicaSet owner reference UID
+func createRsToDeploymentIndex(mgr ctrl.Manager) error {
 	return mgr.GetFieldIndexer().IndexField(context.Background(), &v1.ReplicaSet{}, RsToDeploymentIndex, func(obj client.Object) []string {
 		rs := obj.(*v1.ReplicaSet)
 		for _, owner := range rs.OwnerReferences {
@@ -44,7 +46,7 @@ func CreateRsToDeploymentIndex(mgr ctrl.Manager) error {
 	})
 }
 
-func MapDeploymentToPodReconcileFunc(c client.Client) handler.MapFunc {
+func mapDeploymentToPodReconcileFunc(c client.Client) handler.MapFunc {
 	return func(ctx context.Context, object client.Object) []reconcile.Request {
 		dep := object.(*v1.Deployment)
 		if !IsEnabled(dep) {
@@ -78,6 +80,7 @@ func MapDeploymentToPodReconcileFunc(c client.Client) handler.MapFunc {
 	}
 }
 
+// GetDeployment return deployment associated with Pod
 func GetDeployment(ctx context.Context, c client.Client, pod *corev1.Pod) (*v1.Deployment, error) {
 	var rsName string
 	for _, owner := range pod.OwnerReferences {

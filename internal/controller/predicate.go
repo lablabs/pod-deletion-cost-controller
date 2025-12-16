@@ -7,6 +7,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
+// DeploymentPredicate creates Deployment predicate for filtering
 func DeploymentPredicate() predicate.Predicate {
 	return predicate.NewPredicateFuncs(func(obj client.Object) bool {
 		dep, ok := obj.(*v1.Deployment)
@@ -17,6 +18,7 @@ func DeploymentPredicate() predicate.Predicate {
 	})
 }
 
+// PodPredicate creates Pod predicate for filtering
 func PodPredicate() predicate.Predicate {
 	return predicate.NewPredicateFuncs(func(obj client.Object) bool {
 		pod, ok := obj.(*corev1.Pod)
@@ -27,10 +29,12 @@ func PodPredicate() predicate.Predicate {
 	})
 }
 
+// IsDeleting return true if Pod is in deleting state
 func IsDeleting(pod *corev1.Pod) bool {
 	return pod.DeletionTimestamp != nil
 }
 
+// IsAccepted return true if Pod should be accepted by reconcile loop
 func IsAccepted(pod *corev1.Pod) bool {
 	//
 	// 1️⃣ Always accept pods that are being deleted

@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	// PodDeletionCostAnnotation pod-deletion-cost annotation used by k8s to determine Pod for deletion
 	PodDeletionCostAnnotation = "controller.kubernetes.io/pod-deletion-cost"
 	// EnableAnnotation Use for enable pod-deletion-cost on Deployment. Default annotation used for distribution of cost deletion
 	// annotation is 'topology.kubernetes.io/zone'. Can be overridden by SpreadByAnnotation
@@ -16,6 +17,7 @@ const (
 	TypeAnnotation = "pod-deletion-cost.lablabs.io/type"
 )
 
+// ApplyPodDeletionCost apply PodDeletionCostAnnotation to Pod wit value
 func ApplyPodDeletionCost(pod *v2.Pod, value int) {
 	if pod.Annotations == nil {
 		pod.Annotations = make(map[string]string)
@@ -23,6 +25,7 @@ func ApplyPodDeletionCost(pod *v2.Pod, value int) {
 	pod.Annotations[PodDeletionCostAnnotation] = strconv.Itoa(value)
 }
 
+// GetPodDeletionCost get PodDeletionCostAnnotation
 func GetPodDeletionCost(pod *v2.Pod) (int, bool) {
 	if pod.Annotations == nil {
 		return 0, false
@@ -38,6 +41,7 @@ func GetPodDeletionCost(pod *v2.Pod) (int, bool) {
 	return value, true
 }
 
+// IsEnabled return true id Deployment has EnableAnnotation enabled
 func IsEnabled(dep *v1.Deployment) bool {
 	if dep.Annotations == nil {
 		return false
@@ -45,6 +49,7 @@ func IsEnabled(dep *v1.Deployment) bool {
 	return dep.Annotations[EnableAnnotation] == "true"
 }
 
+// GetType return TypeAnnotation
 func GetType(dep *v1.Deployment) string {
 	if dep.Annotations == nil {
 		return ""
@@ -52,13 +57,7 @@ func GetType(dep *v1.Deployment) string {
 	return dep.Annotations[TypeAnnotation]
 }
 
-func IsTypeSet(dep *v1.Deployment, algType string) bool {
-	if dep.Annotations == nil {
-		return false
-	}
-	return dep.Annotations[TypeAnnotation] == algType
-}
-
+// HasPodDeletionCost checks if Pod has PodDeletionCostAnnotation
 func HasPodDeletionCost(pod *v2.Pod) bool {
 	if pod.Annotations == nil {
 		return false
