@@ -97,7 +97,7 @@ helm upgrade --install -n operations \
 
 # How it works ?
 
-Configuration of `controller.kubernetes.io/pod-deletion-cost` is based on following steps
+Configuration of `controller.kubernetes.io/pod-deletion-cost` is based on following steps.
 
 1. Controller watch for `pod-deletion-cost.lablabs.io/enabled: "true"` on Deployment and for Pod which is owned by ReplicaSet and Deployment. Pod -> is owned by -> RS -> is owned by -> Deployment
 2. If Pod already contains `controller.kubernetes.io/pod-deletion-cost` skip
@@ -106,6 +106,23 @@ Configuration of `controller.kubernetes.io/pod-deletion-cost` is based on follow
 5. Iterate over Pods from step 4 and create set of used `controller.kubernetes.io/pod-deletion-cost` values
 6. Iterate over MaxInt32 up to zero and find first free value in set from step 5
 7. Update this value into Pod came from Reconcile loop from step 3
+
+Selection of algorithm is defined via `pod-deletion-cost.lablabs.io/type: "type_of_algorithm"`. In case you don't specify
+type, default: `zone` is used:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+  annotations:
+    pod-deletion-cost.lablabs.io/enabled: "true"
+    pod-deletion-cost.lablabs.io/type: "zone"
+```
+
+> This configuration is mostly set up for future extension
 
 ![pod-deletion-cost-controller-flow](./docs/images/pod-deletion-cost-controller-flow.gif)
 
