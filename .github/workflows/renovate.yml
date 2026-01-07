@@ -1,0 +1,17 @@
+name: Renovate
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 0 4 * * *
+
+permissions:
+  contents: read
+
+jobs:
+  call-workflow:
+    name: lara-tools
+    uses: lablabs/lara-tools/.github/workflows/renovate.yml@ac4ab4ddb144f2ed1a0b5e498f4ae432f8ed65a6 # v1.1.0
+    secrets:
+      renovate-app-id: ${{ secrets.LARA_RENOVATE_APP_ID }}
+      renovate-app-private-key: ${{ secrets.LARA_RENOVATE_APP_PRIVATE_KEY }}

@@ -1,0 +1,25 @@
+[tools]
+golang = "1.25.4"
+golangci-lint = "2.6.2"
+helm = "3.19.1"
+pre-commit = "4.4.0"
+kind = "0.31.0"
+
+[tasks.lint]
+description = "Run golangci-lint"
+run = "golangci-lint run"
+
+[tasks.download-deps]
+run = "go mod download"
+
+[tasks.test-e2e]
+run = """
+go mod tidy
+make test-e2e
+"""
+
+[tasks.test]
+run = """
+go mod tidy
+make test
+"""

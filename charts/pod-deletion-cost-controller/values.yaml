@@ -24,6 +24,13 @@ fullnameOverride: ""
 rbac:
   create: true
 
+pdb:
+  # Enable pdb
+  enabled: false
+  # Choose exactly ONE of the following
+  minAvailable:
+  maxUnavailable: 1
+
 serviceAccount:
   # Specifies whether a service account should be created
   create: true
@@ -72,7 +79,6 @@ log:
 
 algorithms:
   - "zone"
-  - "ccc"
 
 metrics:
   ## @param metrics.enabled Enable exposing prometheus metrics
@@ -133,3 +139,16 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+# -- Topology spread constraints for pods
+# Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
+topologySpreadConstraints: []
+# Example for zone
+#topologySpreadConstraints:
+#  - maxSkew: 1
+#    topologyKey: topology.kubernetes.io/zone
+#    whenUnsatisfiable: ScheduleAnyway
+#    labelSelector:
+#      matchLabels:
+#        app.kubernetes.io/name: pod-deletion-cost-controller
+#        app.kubernetes.io/instance: pod-deletion-cost-controller

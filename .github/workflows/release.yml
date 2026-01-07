@@ -12,6 +12,7 @@ permissions:
 
 env:
   HELM_VERSION: 3.14.0
+  MISE_VERSION: 2025.12.13
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -19,23 +20,23 @@ concurrency:
 
 jobs:
   helm:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
+      - name: Setup Mise
+        uses: jdx/mise-action@9dc7d5dd454262207dea3ab5a06a3df6afc8ff26 # v3.4.1
         with:
-          fetch-depth: 0
+          version: ${{ env.MISE_VERSION }}
+
+      - name: Install Helm
+        run: mise install helm
 
       - name: Configure Git
         run: |
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
-
-      - name: Install Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: '${{ env.HELM_VERSION }}'
-
 
       - name: Extract version
         id: version
@@ -59,20 +60,20 @@ jobs:
           helm push "$CHART_FILE" oci://ghcr.io/${{ github.repository }}
 
   image:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # 3.7.0
 
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # 3.12.0
 
       - name: Login to Github Packages
-        uses: docker/login-action@v3
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # 3.6.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -80,7 +81,7 @@ jobs:
 
       - name: Docker meta for tag
         id: meta-tag
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # 5.10.0
         with:
           images: ghcr.io/lablabs/pod-deletion-cost-controller
           flavor: |
@@ -89,7 +90,7 @@ jobs:
             type=ref,event=tag
 
       - name: Build image and push to GitHub Container Registry
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # 6.18.0
         with:
           context: .
           file: ./Dockerfile

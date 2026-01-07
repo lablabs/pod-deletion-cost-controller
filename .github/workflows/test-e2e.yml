@@ -11,29 +11,28 @@ on:
 permissions:
   contents: read
 
+env:
+  MISE_VERSION: 2025.12.13
+
 jobs:
   test-e2e:
-    name: Run on Ubuntu
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - name: Clone the code
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
+      - name: Setup Mise
+        uses: jdx/mise-action@9dc7d5dd454262207dea3ab5a06a3df6afc8ff26 # v3.4.1
+        with:
+          version: ${{ env.MISE_VERSION }}
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # 5.6.0
         with:
           go-version-file: go.mod
 
-      - name: Install the latest version of kind
-        run: |
-          curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
-          chmod +x ./kind
-          sudo mv ./kind /usr/local/bin/kind
-
-      - name: Verify kind installation
-        run: kind version
+      - name: Install kind
+        run: mise install kind
 
       - name: Running Test e2e in kind
-        run: |
-          go mod tidy
-          make test-e2e
+        run: mise test-e2e

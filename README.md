@@ -157,9 +157,10 @@ moduleMng := controller.NewModuleManager()
 err = zone.Register(logger, moduleMng, mgr.GetClient(), algoType)
 ```
 
-# Development
+# Development & Tools
 
-Build with [kubebuilder](https://book.kubebuilder.io)
+- [kubebuilder](https://book.kubebuilder.io) - generate project
+- [mise](https://mise.jdx.dev/) - for all tools used by project
 
 Dependencies:
 
@@ -167,8 +168,7 @@ Dependencies:
 
 ### [PRE-COMMIT](https://pre-commit.com/#install)
 
-- install `pre-commit` binary if not installed by `asdf`
-- switch to tf-infra git folder
+- install `pre-commit` binary if not installed by `mise`
 - run `pre-commit install` to initialize pre-commit environment based on `.pre-commit-config.yaml` configuration
 
 # Test
