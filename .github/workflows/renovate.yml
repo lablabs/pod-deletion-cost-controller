@@ -4,7 +4,6 @@ name: Renovate
 #  workflow_dispatch:
 #  schedule:
 #    - cron: 0 4 * * *
-
 on:
   pull_request:
     branches:
@@ -14,12 +13,23 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
+  issues: read
+  pull-requests: write
 
 jobs:
-  call-workflow:
-    name: lara-tools
-    uses: lablabs/lara-tools/.github/workflows/renovate.yml@ac4ab4ddb144f2ed1a0b5e498f4ae432f8ed65a6 # v1.1.0
-    secrets:
-      renovate-app-id: ${{ secrets.LARA_RENOVATE_APP_ID }}
-      renovate-app-private-key: ${{ secrets.LARA_RENOVATE_APP_PRIVATE_KEY }}
+  renovate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Renovate
+        uses: renovatebot/github-action@66387ab8c2464d575b933fa44e9e5a86b2822809 # v44.2.4
+        env:
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_ONBOARDING: false
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
