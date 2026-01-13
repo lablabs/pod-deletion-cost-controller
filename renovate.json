@@ -1,0 +1,22 @@
+{
+  "labels": ["dependencies"],
+
+  "enabledManagers": [
+    "mise",
+    "github-actions",
+    "gomod"
+  ],
+
+  "regexManagers": [
+    {
+      "fileMatch": ["^\\.github/workflows/.*\\.ya?ml$"],
+      "matchStrings": [
+        "MISE_VERSION:\\s*(?<currentValue>\\d{4}\\.\\d{2}\\.\\d{2})"
+      ],
+      "depNameTemplate": "mise",
+      "datasourceTemplate": "github-releases",
+      "packageNameTemplate": "jdx/mise",
+      "versioningTemplate": "semver"
+    }
+  ]
+}
