@@ -1,7 +1,5 @@
 {
   "extends": ["config:recommended"],
-  "onboarding": false,
-  "requireConfig": false,
   "labels": ["dependencies"],
 
   "enabledManagers": [
