@@ -4,19 +4,22 @@
   "enabledManagers": [
     "mise",
     "github-actions",
+    "custom.regex",
     "gomod"
   ],
 
-  "regexManagers": [
+  "customManagers": [
     {
-      "fileMatch": ["^\\.github/workflows/.*\\.ya?ml$"],
+      "customType": "regex",
+      "fileMatch": [
+        "^\\.github/workflows/.*ya?ml$"
+        ],
       "matchStrings": [
         "MISE_VERSION:\\s*(?<currentValue>\\d{4}\\.\\d{2}\\.\\d{2})"
       ],
-      "depNameTemplate": "mise",
-      "datasourceTemplate": "github-releases",
-      "packageNameTemplate": "jdx/mise",
-      "versioningTemplate": "semver"
+      "datasourceTemplate": "{{datasource}}",
+      "depNameTemplate": "{{depName}}",
+      "versioningTemplate": "{{#if versioning}}{{versioning}}{{else}}semver{{/if}}"
     }
   ]
 }
