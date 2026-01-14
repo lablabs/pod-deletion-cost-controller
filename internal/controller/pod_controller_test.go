@@ -182,10 +182,13 @@ var _ = Describe("PodDeletionCost Controller", func() {
 
 			Eventually(func() string {
 				out := &corev1.Pod{}
-				_ = k8sClient.Get(ctx,
+				err := k8sClient.Get(ctx,
 					types.NamespacedName{Name: "pod-1", Namespace: "default"},
 					out,
 				)
+				if err != nil {
+					return "" // will retry
+				}
 				if out.Annotations == nil {
 					return ""
 				}

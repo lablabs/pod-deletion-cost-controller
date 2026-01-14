@@ -28,7 +28,7 @@ rules:
     verbs:
       - update
       - patch
-  - apiGroups: [ "coordination.k8s.io" ]
+  - apiGroups: ["coordination.k8s.io"]
     resources:
       - leases
     verbs:
@@ -38,7 +38,7 @@ rules:
       - create
       - update
       - patch
-  - apiGroups: [ "" ]
+  - apiGroups: [""]
     resources:
       - events
     verbs:
