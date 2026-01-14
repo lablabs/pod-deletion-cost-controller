@@ -1,38 +1,164 @@
-# pod-deletion-cost-controller
+# Pod Deletion Cost Controller
 
-Controller for injecting `controller.kubernetes.io/pod-deletion-cost` annotation into running Pod. This annotation influences
-which Pods are terminated first during downscaling. This allows the controller to make smarter decisions during scale-down and
-avoid removing too many Pods from a single availability zone, which could compromise resilience.
-In practice, by defining a deletion cost strategy across Pods, Kubernetes can evenly distribute termination events and maintain
-high availability even under reduction of replicas. This results in balanced Pod placement across zones and a safer,
-more predictable downscaling behavior. For more information, follow context below
+A Kubernetes controller that automatically manages the [`controller.kubernetes.io/pod-deletion-cost`](https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/#pod-deletion-cost) annotation on pods. This annotation influences which pods are terminated first during scale-down operations, enabling smarter and more resilient downscaling behavior.
 
-- [replicaset/#pod-deletion-cost](https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/#pod-deletion-cost)
-- [k8s-algorithm-pick-pod-scale-in](https://rpadovani.com/k8s-algorithm-pick-pod-scale-in)
-- [descheduler](https://github.com/kubernetes-sigs/descheduler?tab=readme-ov-file#removepodsviolatingtopologyspreadconstraint)
-- [keps/sig-apps/2255-pod-cost](https://github.com/kubernetes/enhancements/tree/master/keps/sig-apps/2255-pod-cost)
+The controller is designed to be **extensible** with a plugin-based architecture, allowing multiple algorithms for calculating pod deletion costs. Currently, it includes a **zone-aware distribution algorithm** that ensures even pod termination across availability zones.
 
-# Usage & Configuration
+## The Problem: Default Kubernetes Scale-Down Behavior
 
-Enable on k8s/Deployment via `pod-deletion-cost.lablabs.io/enabled: "true"` annotation:
+When Kubernetes scales down a Deployment or ReplicaSet, it uses a [specific algorithm](https://github.com/kubernetes/kubernetes/blob/release-1.32/pkg/controller/replicaset/replica_set.go#L836) to determine which pods to delete first. The default selection criteria are:
+
+1. Pods that are unassigned (not scheduled to a node)
+2. Pods in Pending or Unknown phase
+3. Pods not ready vs. pods ready
+4. Pods with lower pod-deletion-cost annotation value
+5. Pods with more recent creation timestamps
+6. Random selection as a tiebreaker
+
+**The issue:** Without explicit `pod-deletion-cost` annotations, Kubernetes may delete pods unevenly across availability zones during scale-down. This can lead to:
+
+- **Imbalanced zone distribution** - One zone might lose significantly more pods than others
+- **Reduced resilience** - Workloads become vulnerable to zone failures
+- **Topology constraint violations** - Even with `topologySpreadConstraints`, scale-down doesn't respect zone distribution
+
+For example, if you have 6 pods spread across 3 zones (2 per zone) and scale down to 3 pods, Kubernetes might delete 2 pods from Zone A and 1 from Zone B, leaving you with an unbalanced distribution (0 in Zone A, 1 in Zone B, 2 in Zone C).
+
+## Solution: Pod Deletion Cost Annotation
+
+Kubernetes provides the [`controller.kubernetes.io/pod-deletion-cost`](https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/#pod-deletion-cost) annotation (stable since v1.22) to influence pod deletion order:
+
+- **Lower values** = Higher deletion priority (deleted first)
+- **Higher values** = Lower deletion priority (deleted last)
+- Valid range: -2147483648 to 2147483647
+
+This controller automatically assigns these values based on configurable algorithms, ensuring predictable and resilient scale-down behavior.
+
+### References
+
+- [Kubernetes ReplicaSet - Pod Deletion Cost](https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/#pod-deletion-cost)
+- [KEP-2255: Pod Deletion Cost](https://github.com/kubernetes/enhancements/tree/master/keps/sig-apps/2255-pod-cost)
+- [Understanding K8s Scale-In Algorithm](https://rpadovani.com/k8s-algorithm-pick-pod-scale-in)
+- [Descheduler - TopologySpreadConstraint](https://github.com/kubernetes-sigs/descheduler?tab=readme-ov-file#removepodsviolatingtopologyspreadconstraint)
+
+## Current Algorithm: Zone-Aware Distribution
+
+The `zone` algorithm (default) ensures even pod distribution across availability zones during scale-down.
+
+### How It Works
+
+1. **Pod Detection** - Controller watches for pods belonging to enabled Deployments
+2. **Zone Identification** - Determines the pod's zone from its node's `topology.kubernetes.io/zone` label
+3. **Cost Calculation** - Assigns unique deletion costs within each zone, starting from MaxInt32 (2147483647) and descending
+4. **Annotation** - Applies `controller.kubernetes.io/pod-deletion-cost` to the pod
+
+### Algorithm Details
+
+Within each zone, pods receive descending cost values:
+- First pod in zone: `2147483647` (most protected)
+- Second pod in zone: `2147483646`
+- And so on...
+
+Different zones independently allocate their own cost values. This ensures that during scale-down, Kubernetes removes pods evenly across zones.
+
+### Example Scenario
+
+**Initial state:** 6 pods across 3 zones
+
+```
+Zone A: Pod1 (cost: 2147483647), Pod2 (cost: 2147483646)
+Zone B: Pod3 (cost: 2147483647), Pod4 (cost: 2147483646)
+Zone C: Pod5 (cost: 2147483647), Pod6 (cost: 2147483646)
+```
+
+**After scaling down to 3 pods:**
+
+Kubernetes deletes pods with the lowest costs first. Since each zone has pods with cost `2147483646`, one pod is removed from each zone:
+
+```
+Zone A: Pod1 (cost: 2147483647)
+Zone B: Pod3 (cost: 2147483647)
+Zone C: Pod5 (cost: 2147483647)
+```
+
+Result: **Even distribution maintained** across all zones.
+
+![Pod Deletion Cost Controller Flow](./docs/images/pod-deletion-cost-controller-flow.gif)
+
+## Installation
+
+### Helm
+
+```bash
+VERSION=v0.0.0-alpha.2
+
+# Pull the chart (optional)
+helm pull oci://ghcr.io/lablabs/pod-deletion-cost-controller/pod-deletion-cost-controller \
+  --version ${VERSION}
+
+# Install
+helm upgrade --install pod-deletion-cost-controller \
+  oci://ghcr.io/lablabs/pod-deletion-cost-controller/pod-deletion-cost-controller \
+  --namespace operations \
+  --create-namespace \
+  --version ${VERSION}
+```
+
+### Helm Values
+
+Key configuration options in `values.yaml`:
+
+```yaml
+# Algorithms to enable
+algorithms:
+  - "zone"
+
+# Logging configuration
+log:
+  devel: false
+  encoder: console  # or "json"
+  level: 3          # 0=debug, 1=info, 2=warn, 3=error
+
+# Health probes
+health:
+  enabled: true
+  port: 8001
+
+# Metrics
+metrics:
+  enabled: true
+  service:
+    ports:
+      metrics: 9000
+
+# High availability
+replicaCount: 1
+pdb:
+  enabled: false
+  maxUnavailable: 1
+```
+
+## Usage
+
+### Enable for a Deployment
+
+Add the `pod-deletion-cost.lablabs.io/enabled: "true"` annotation to your Deployment:
+
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx
-  labels:
-    app: nginx
+  name: my-app
   annotations:
     pod-deletion-cost.lablabs.io/enabled: "true"
 spec:
-  replicas: 8
+  replicas: 6
   selector:
     matchLabels:
-      app: nginx
+      app: my-app
   template:
     metadata:
       labels:
-        app: nginx
+        app: my-app
     spec:
       topologySpreadConstraints:
         - maxSkew: 1
@@ -40,36 +166,41 @@ spec:
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
-              app: nginx
+              app: my-app
       containers:
-        - name: nginx
-          image: nginx:latest
+        - name: my-app
+          image: my-app:latest
 ```
 
-In default configuration, controller looks for node's label `topology.kubernetes.io/zone` and base on value
-evenly distribute termination order via `controller.kubernetes.io/pod-deletion-cost`. In case Nodes are deployed
-in no zone env, it can be overridden via `pod-deletion-cost.lablabs.io/spread-by` which define Label name of Node
-used for spread topology counting logic.
+### Configuration Annotations
+
+| Annotation | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `pod-deletion-cost.lablabs.io/enabled` | Yes | - | Set to `"true"` to enable the controller |
+| `pod-deletion-cost.lablabs.io/type` | No | `zone` | Algorithm type to use |
+| `pod-deletion-cost.lablabs.io/spread-by` | No | `topology.kubernetes.io/zone` | Node label key for topology spreading |
+
+### Custom Topology Label
+
+For on-premises or custom environments, you can specify a different node label for topology spreading:
 
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx
-  labels:
-    app: nginx
+  name: my-app
   annotations:
     pod-deletion-cost.lablabs.io/enabled: "true"
-    pod-deletion-cost.lablabs.io/spread-by: "topology.kubernetes.io/rack" # Example of annotation, on-prem etc..
+    pod-deletion-cost.lablabs.io/spread-by: "topology.kubernetes.io/rack"
 spec:
-  replicas: 8
+  replicas: 6
   selector:
     matchLabels:
-      app: nginx
+      app: my-app
   template:
     metadata:
       labels:
-        app: nginx
+        app: my-app
     spec:
       topologySpreadConstraints:
         - maxSkew: 1
@@ -77,106 +208,38 @@ spec:
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
-              app: nginx
+              app: my-app
       containers:
-        - name: nginx
-          image: nginx:latest
+        - name: my-app
+          image: my-app:latest
 ```
 
-# Install
+### Explicit Algorithm Selection
 
-Helm install:
-```bash
-
-VERSION=v0.0.0-alpha.2
-helm pull oci://ghcr.io/lablabs/pod-deletion-cost-controller/pod-deletion-cost-controller --version ${VERSION}
-helm upgrade --install -n operations \
-    --create-namespace pod-deletion-cost-controller  \
-    oci://ghcr.io/lablabs/pod-deletion-cost-controller/pod-deletion-cost-controller \
-    --version ${VERSION}
-```
-
-# How it works ?
-
-Configuration of `controller.kubernetes.io/pod-deletion-cost` is based on following steps.
-
-1. Controller watch for `pod-deletion-cost.lablabs.io/enabled: "true"` on Deployment and for Pod which is owned by ReplicaSet and Deployment. Pod -> is owned by -> RS -> is owned by -> Deployment
-2. If Pod already contains `controller.kubernetes.io/pod-deletion-cost` skip
-3. If not, find Node's zone (`topology.kubernetes.io/zone`) where Pod is scheduled,
-4. List all Pods which belongs to the same zone `topology.kubernetes.io/zone`
-5. Iterate over Pods from step 4 and create set of used `controller.kubernetes.io/pod-deletion-cost` values
-6. Iterate over MaxInt32 up to zero and find first free value in set from step 5
-7. Update this value into Pod came from Reconcile loop from step 3
-
-Selection of algorithm is defined via `pod-deletion-cost.lablabs.io/type: "type_of_algorithm"`. In case you don't specify
-type, default: `zone` is used:
+While `zone` is the default algorithm, you can explicitly specify it:
 
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx
-  labels:
-    app: nginx
+  name: my-app
   annotations:
     pod-deletion-cost.lablabs.io/enabled: "true"
     pod-deletion-cost.lablabs.io/type: "zone"
 ```
 
-> This configuration is mostly set up for future extension
+## Contributing
 
-![pod-deletion-cost-controller-flow](./docs/images/pod-deletion-cost-controller-flow.gif)
+The controller uses an extensible plugin-based architecture, making it easy to add new algorithms for different use cases. We welcome contributions!
 
-### Add new algorithm
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for:
 
-You can easily add new algorithm into controller. Take a look at [./internal/zone/module.go](./internal/zone/module.go)
-```go
-type Registrator interface {
-    AddModule(module module.Handler) error
-}
+- Architecture overview and key components
+- Step-by-step guide for adding new algorithms
+- Development setup and build instructions
+- Testing requirements
+- Code style guidelines
 
-func Register(log logr.Logger, r Registrator, client client.Client, algoTypes []string) error {
-    if slices.Contains(algoTypes, Name) || len(algoTypes) == 0 {
-        h := NewHandler(client)
-        err := r.AddModule(h)
-        if err != nil {
-            return fmt.Errorf("register zone module failed: %w", err)
-        }
-        log.WithValues("module", Name).Info("registered")
-        return nil
-    }
-    log.V(2).WithValues("module", Name).Info("NOT registered")
-    return nil
-}
-```
+## License
 
-Registration of module is done in [./cmd/main.go](./cmd/main.go)
-```go
-//configuration part for algorithms
-moduleMng := controller.NewModuleManager()
-//Register new algo handler here
-err = zone.Register(logger, moduleMng, mgr.GetClient(), algoType)
-```
-
-# Development & Tools
-
-- [kubebuilder](https://book.kubebuilder.io) - generate project
-- [mise](https://mise.jdx.dev/) - for all tools used by project
-
-Dependencies:
-
-- [Kind](https://kind.sigs.k8s.io/) - for running tests. It's not downloaded automatically as the other tools in bin folder
-
-### [PRE-COMMIT](https://pre-commit.com/#install)
-
-- install `pre-commit` binary if not installed by `mise`
-- run `pre-commit install` to initialize pre-commit environment based on `.pre-commit-config.yaml` configuration
-
-# Test
-
-```bash
-# Run unit tests
-make test
-# Run e2e tests with kind
-make test-e2e
-```
+Apache License 2.0 - see [LICENSE](./LICENSE) for details.
