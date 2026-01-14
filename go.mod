@@ -1,6 +1,6 @@
 module github.com/lablabs/pod-deletion-cost-controller
 
-go 1.24.5
+go 1.25.5
 
 require (
 	github.com/go-logr/logr v1.4.2

@@ -18,9 +18,9 @@
       "matchStrings": [
         "MISE_VERSION:\\s*(?<currentValue>\\d{4}\\.\\d{2}\\.\\d{2})"
       ],
-      "datasourceTemplate": "{{datasource}}",
-      "depNameTemplate": "{{depName}}",
-      "versioningTemplate": "{{#if versioning}}{{versioning}}{{else}}semver{{/if}}"
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "jdx/mise",
+      "versioningTemplate": "regex:^(?<major>\\d{4})\\.(?<minor>\\d{2})\\.(?<patch>\\d{2})$"
     }
   ]
 }

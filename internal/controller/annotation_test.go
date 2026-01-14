@@ -1,7 +1,7 @@
 package controller_test
 
 import (
-	testing "testing"
+	"testing"
 
 	"github.com/lablabs/pod-deletion-cost-controller/internal/controller"
 	appsv1 "k8s.io/api/apps/v1"

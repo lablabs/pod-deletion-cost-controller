@@ -93,7 +93,7 @@ func (h *Handler) listPodsInZone(
 ) error {
 	podRecZoneAnn, err := h.getPodAnnotation(ctx, pod, deployment)
 	if err != nil {
-		return fmt.Errorf("unable to get pod annotation: %w", err)
+		return fmt.Errorf("unable to get p annotation: %w", err)
 	}
 	podList := &corev1.PodList{}
 	err = listPodsByOwnerRSIndex(ctx, h.client, pod, podList)
@@ -102,17 +102,17 @@ func (h *Handler) listPodsInZone(
 	}
 
 	node := &corev1.Node{}
-	for _, pod := range podList.Items {
-		if err := h.client.Get(ctx, types.NamespacedName{Name: pod.Spec.NodeName}, node); err != nil {
+	for _, p := range podList.Items {
+		if err := h.client.Get(ctx, types.NamespacedName{Name: p.Spec.NodeName}, node); err != nil {
 			return err
 		}
 		zoneAnn := GetSpreadByAnnotation(node, deployment)
 		if podRecZoneAnn != zoneAnn {
 			continue
 		}
-		*pods = append(*pods, pod)
+		*pods = append(*pods, p)
 	}
-	log.WithValues("node", pod.Spec.NodeName, "zone", podRecZoneAnn, "zone-pod-count", len(*pods))
+	log.V(3).WithValues("node", pod.Spec.NodeName, "zone", podRecZoneAnn, "zone-p-count", len(*pods)).Info("listing pods")
 	return nil
 }
 

@@ -105,6 +105,10 @@ lint-config: golangci-lint ## Verify golangci-lint linter configuration
 build: fmt vet ## Build manager binary.
 	go build -o bin/manager cmd/main.go
 
+.PHONY: clean
+clean: ## Remove build artifacts.
+	rm -rf bin/ cover.out Dockerfile.cross
+
 .PHONY: run
 run: fmt vet ## Run a controller from your host.
 	go run ./cmd/main.go
@@ -142,7 +146,7 @@ ifndef ignore-not-found
   ignore-not-found = false
 endif
 
-.PHONY: load-docker-image
+.PHONY: load-image
 load-image: docker-build  ## Load docker-image into kind cluster
 	$(KIND) load docker-image ${IMG} --name $(KIND_CLUSTER)
 

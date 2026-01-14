@@ -10,6 +10,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	logr "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -48,12 +49,14 @@ func createRsToDeploymentIndex(mgr ctrl.Manager) error {
 
 func mapDeploymentToPodReconcileFunc(c client.Client) handler.MapFunc {
 	return func(ctx context.Context, object client.Object) []reconcile.Request {
+		log := logr.FromContext(ctx)
 		dep := object.(*v1.Deployment)
 		if !IsEnabled(dep) {
 			return nil
 		}
 		rsList := &v1.ReplicaSetList{}
 		if err := c.List(ctx, rsList, client.MatchingFields{RsToDeploymentIndex: string(dep.UID)}); err != nil {
+			log.Error(err, "unable to list ReplicaSets")
 			return nil
 		}
 
@@ -61,6 +64,7 @@ func mapDeploymentToPodReconcileFunc(c client.Client) handler.MapFunc {
 		for _, rs := range rsList.Items {
 			podList := &corev1.PodList{}
 			if err := c.List(ctx, podList, client.MatchingFields{PodToRSIndex: string(rs.UID)}); err != nil {
+				log.Error(err, "unable to list Pods")
 				continue
 			}
 			for _, pod := range podList.Items {

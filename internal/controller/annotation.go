@@ -17,7 +17,7 @@ const (
 	TypeAnnotation = "pod-deletion-cost.lablabs.io/type"
 )
 
-// ApplyPodDeletionCost apply PodDeletionCostAnnotation to Pod wit value
+// ApplyPodDeletionCost apply PodDeletionCostAnnotation to Pod with value
 func ApplyPodDeletionCost(pod *corev1.Pod, value int) {
 	if pod.Annotations == nil {
 		pod.Annotations = make(map[string]string)
@@ -41,7 +41,7 @@ func GetPodDeletionCost(pod *corev1.Pod) (int, bool) {
 	return value, true
 }
 
-// IsEnabled return true id Deployment has EnableAnnotation enabled
+// IsEnabled return true if Deployment has EnableAnnotation enabled
 func IsEnabled(dep *appsv1.Deployment) bool {
 	if dep.Annotations == nil {
 		return false
