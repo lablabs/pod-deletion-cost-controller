@@ -14,7 +14,8 @@ func GetK8sBinaryDir(deep int, dirs []string) (string, error) {
 			return "", fmt.Errorf("not found")
 		}
 		parent := make([]string, 0)
-		parent = append([]string{".."}, dirs...)
+		parent = append(parent, "..")
+		parent = append(parent, dirs...)
 		return GetK8sBinaryDir(deep-1, parent)
 	}
 	for _, entry := range entries {
