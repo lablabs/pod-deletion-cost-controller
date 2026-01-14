@@ -101,16 +101,24 @@ func (h *Handler) listPodsInZone(
 		return fmt.Errorf("unable to list pods by rs: %w", err)
 	}
 
+	nodeCache := make(map[string]*corev1.Node)
 	node := &corev1.Node{}
-	for _, pod := range podList.Items {
-		if err := h.client.Get(ctx, types.NamespacedName{Name: pod.Spec.NodeName}, node); err != nil {
-			return err
+	for _, p := range podList.Items {
+		nodeName := p.Spec.NodeName
+		cachedNode, ok := nodeCache[nodeName]
+		if !ok {
+			if err := h.client.Get(ctx, types.NamespacedName{Name: nodeName}, node); err != nil {
+				return err
+			}
+			nodeCopy := node.DeepCopy()
+			nodeCache[nodeName] = nodeCopy
+			cachedNode = nodeCopy
 		}
-		zoneAnn := GetSpreadByAnnotation(node, deployment)
+		zoneAnn := GetSpreadByAnnotation(cachedNode, deployment)
 		if podRecZoneAnn != zoneAnn {
 			continue
 		}
-		*pods = append(*pods, pod)
+		*pods = append(*pods, p)
 	}
 	log.WithValues("node", pod.Spec.NodeName, "zone", podRecZoneAnn, "zone-pod-count", len(*pods))
 	return nil
