@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/lablabs/pod-deletion-cost-controller/internal/zone"
-	v2 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 )
 
@@ -58,13 +58,13 @@ func TestGetSpreadByAnnotation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			node := &v1.Node{
+			node := &corev1.Node{
 				ObjectMeta: controllerruntime.ObjectMeta{
 					Labels: tt.nodeLabels,
 				},
 			}
 
-			dep := &v2.Deployment{
+			dep := &appsv1.Deployment{
 				ObjectMeta: controllerruntime.ObjectMeta{
 					Annotations: tt.depAnn,
 				},

@@ -37,7 +37,7 @@ func (c *Cache[K, V]) Has(key K) bool {
 func (c *Cache[K, V]) GetList(keys ...K) []V {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	out := make([]V, 0)
+	out := make([]V, 0, len(keys))
 	for _, key := range keys {
 		if val, ok := c.data[key]; ok {
 			out = append(out, val)

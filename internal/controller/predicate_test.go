@@ -51,7 +51,7 @@ func TestAcceptDeployment(t *testing.T) {
 		},
 		{
 			name: "wrong object type → false",
-			dep:  nil, // passed through obj.(*Deployment) path
+			dep:  nil,
 			want: false,
 		},
 	}

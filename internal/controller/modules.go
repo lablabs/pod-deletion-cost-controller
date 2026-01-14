@@ -35,7 +35,7 @@ func (m *Manager) AddModule(module module.Handler) error {
 }
 
 // Handle accepts Pod and Deployment and update it according to type
-func (m *Manager) Handle(log logr.Logger, pod *v1.Pod, dep *v2.Deployment) error {
+func (m *Manager) Handle(ctx context.Context, log logr.Logger, pod *v1.Pod, dep *v2.Deployment) error {
 	algType := GetType(dep)
 	if !IsEnabled(dep) {
 		return nil
@@ -45,5 +45,5 @@ func (m *Manager) Handle(log logr.Logger, pod *v1.Pod, dep *v2.Deployment) error
 		log.V(3).WithValues("deployment", dep.Name, TypeAnnotation, algType).Info("handler not found")
 		return nil
 	}
-	return h.Handle(context.Background(), log, pod, dep)
+	return h.Handle(ctx, log, pod, dep)
 }

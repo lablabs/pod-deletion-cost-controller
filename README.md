@@ -87,6 +87,7 @@ spec:
 
 Helm install:
 ```bash
+
 VERSION=v0.0.0-alpha.2
 helm pull oci://ghcr.io/lablabs/pod-deletion-cost-controller/pod-deletion-cost-controller --version ${VERSION}
 helm upgrade --install -n operations \

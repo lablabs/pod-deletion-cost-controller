@@ -65,8 +65,6 @@ var _ = BeforeSuite(func() {
 	//
 	Expect(corev1.AddToScheme(scheme.Scheme)).To(Succeed())
 	Expect(appsv1.AddToScheme(scheme.Scheme)).To(Succeed())
-	// +kubebuilder:scaffold:scheme
-	Expect(scheme.AddToScheme(scheme.Scheme)).To(Succeed())
 
 	//
 	// 2️⃣ Start test environment

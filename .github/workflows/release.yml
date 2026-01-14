@@ -83,7 +83,7 @@ jobs:
         id: meta-tag
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # 5.10.0
         with:
-          images: ghcr.io/lablabs/pod-deletion-cost-controller
+          images: ghcr.io/${{ github.repository }}
           flavor: |
             latest=true
           tags: |

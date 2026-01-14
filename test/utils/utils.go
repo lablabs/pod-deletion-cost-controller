@@ -32,7 +32,10 @@ const (
 
 // Run executes the provided command within this context
 func Run(cmd *exec.Cmd) (string, error) {
-	dir, _ := GetProjectDir()
+	dir, err := GetProjectDir()
+	if err != nil {
+		return "", err
+	}
 	cmd.Dir = dir
 
 	if err := os.Chdir(cmd.Dir); err != nil {
@@ -72,7 +75,7 @@ func GetProjectDir() (string, error) {
 	if err != nil {
 		return wd, fmt.Errorf("failed to get current working directory: %w", err)
 	}
-	wd = strings.ReplaceAll(wd, "/test/e2e", "")
+	wd = strings.TrimSuffix(wd, "/test/e2e")
 	return wd, nil
 }
 

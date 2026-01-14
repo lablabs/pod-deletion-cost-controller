@@ -3,8 +3,8 @@ package controller
 import (
 	"strconv"
 
-	v1 "k8s.io/api/apps/v1"
-	v2 "k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -18,7 +18,7 @@ const (
 )
 
 // ApplyPodDeletionCost apply PodDeletionCostAnnotation to Pod wit value
-func ApplyPodDeletionCost(pod *v2.Pod, value int) {
+func ApplyPodDeletionCost(pod *corev1.Pod, value int) {
 	if pod.Annotations == nil {
 		pod.Annotations = make(map[string]string)
 	}
@@ -26,7 +26,7 @@ func ApplyPodDeletionCost(pod *v2.Pod, value int) {
 }
 
 // GetPodDeletionCost get PodDeletionCostAnnotation
-func GetPodDeletionCost(pod *v2.Pod) (int, bool) {
+func GetPodDeletionCost(pod *corev1.Pod) (int, bool) {
 	if pod.Annotations == nil {
 		return 0, false
 	}
@@ -42,7 +42,7 @@ func GetPodDeletionCost(pod *v2.Pod) (int, bool) {
 }
 
 // IsEnabled return true id Deployment has EnableAnnotation enabled
-func IsEnabled(dep *v1.Deployment) bool {
+func IsEnabled(dep *appsv1.Deployment) bool {
 	if dep.Annotations == nil {
 		return false
 	}
@@ -50,7 +50,7 @@ func IsEnabled(dep *v1.Deployment) bool {
 }
 
 // GetType return TypeAnnotation
-func GetType(dep *v1.Deployment) string {
+func GetType(dep *appsv1.Deployment) string {
 	if dep.Annotations == nil {
 		return ""
 	}
@@ -58,7 +58,7 @@ func GetType(dep *v1.Deployment) string {
 }
 
 // HasPodDeletionCost checks if Pod has PodDeletionCostAnnotation
-func HasPodDeletionCost(pod *v2.Pod) bool {
+func HasPodDeletionCost(pod *corev1.Pod) bool {
 	if pod.Annotations == nil {
 		return false
 	}
