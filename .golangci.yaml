@@ -1,0 +1,25 @@
+version: "2"
+run:
+  tests: false
+linters:
+  enable:
+    - revive
+    - govet
+    - staticcheck
+    - errcheck
+    - ineffassign
+  exclusions:
+    rules:
+      - linters:
+          - revive
+        path: (.+)_test\.go
+      - linters:
+          - revive
+        path: ^test/
+      - linters:
+          - revive
+        text: "package-comments: should have a package comment"
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

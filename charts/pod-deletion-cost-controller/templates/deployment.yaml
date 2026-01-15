@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pod-deletion-cost-controller.fullname" . }}
+  labels:
+    {{- include "pod-deletion-cost-controller.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "pod-deletion-cost-controller.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "pod-deletion-cost-controller.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "pod-deletion-cost-controller.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.image.fullNameOverride }}
+          image: "{{ .Values.image.fullNameOverride }}"
+          {{- else }}
+          image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          {{- end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            {{- if .Values.health.enabled }}
+            - "-health-probe-bind-address"
+            - {{ printf ":%d" (int .Values.health.port) }}
+            {{- end }}
+            {{- if .Values.metrics.enabled }}
+            - "-metrics-bind-address"
+            - {{ printf ":%d" (int .Values.metrics.service.ports.metrics ) }}
+            {{- else }}
+            - "-metrics-bind-address"
+            - ":0"
+            {{- end}}
+            - "-zap-devel"
+            - "{{ .Values.log.devel }}"
+            - "-zap-encoder"
+            - "{{ .Values.log.encoder }}"
+            - "-zap-log-level"
+            - "{{ .Values.log.level }}"
+            - "-zap-stacktrace-level"
+            - "{{ .Values.log.stackTraceLevel }}"
+            - "-zap-time-encoding"
+            - "{{ .Values.log.timeEncoding }}"
+            {{- if .Values.algorithms }}
+            - "-algorithm-type"
+            - "{{ .Values.algorithms | join "," }}"
+            {{- end }}
+          ports:
+            {{- if .Values.metrics.enabled }}
+            - name: http-metric
+              containerPort: {{ .Values.metrics.service.ports.metrics }}
+              protocol: TCP
+            {{- end }}
+            {{- if .Values.health.enabled }}
+            - name: http-health
+              containerPort: {{ .Values.health.port }}
+              protocol: TCP
+            {{- end }}
+          {{- if .Values.health.enabled }}
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

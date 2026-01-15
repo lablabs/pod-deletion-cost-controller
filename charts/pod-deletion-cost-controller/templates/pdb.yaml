@@ -1,0 +1,25 @@
+{{- if and .Values.pdb.enabled (eq (.Values.replicaCount | int) 1) }}
+{{- fail "PodDisruptionBudget cannot be used with replicaCount=1" }}
+{{- end }}
+{{- if and .Values.pdb.enabled .Values.pdb.minAvailable .Values.pdb.maxUnavailable }}
+{{- fail "pdb.minAvailable and pdb.maxUnavailable are mutually exclusive. Set only one." }}
+{{- end }}
+{{- if .Values.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "pod-deletion-cost-controller.fullname" . }}
+  labels:
+    {{- include "pod-deletion-cost-controller.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "pod-deletion-cost-controller.selectorLabels" . | nindent 6 }}
+  {{- if .Values.pdb.minAvailable }}
+  minAvailable: {{ .Values.pdb.minAvailable }}
+  {{- else if .Values.pdb.maxUnavailable }}
+  maxUnavailable: {{ .Values.pdb.maxUnavailable }}
+  {{- else }}
+  {{- fail "pdb.enabled=true but neither minAvailable nor maxUnavailable is set" }}
+  {{- end }}
+{{- end }}

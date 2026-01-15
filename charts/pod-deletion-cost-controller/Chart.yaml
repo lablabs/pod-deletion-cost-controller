@@ -1,0 +1,14 @@
+apiVersion: v2
+name: pod-deletion-cost-controller
+description: K8s controller for managing pod-deletion-cost
+
+type: application
+version: 0.0.1
+appVersion: "0.0.1"
+
+maintainers:
+  - name: lablabs
+    url: https://github.com/lablabs
+home: https://github.com/lablabs/pod-deletion-cost-controller
+sources:
+  - https://github.com/lablabs/pod-deletion-cost-controller

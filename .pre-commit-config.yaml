@@ -1,0 +1,29 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: destroyed-symlinks
+      - id: detect-private-key
+      - id: check-ast
+      - id: check-case-conflict
+      - id: debug-statements
+
+  - repo: https://github.com/jorisroovers/gitlint
+    rev: v0.19.1
+    hooks:
+      - id: gitlint
+        stages: [commit-msg]
+
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v2.6.2
+    hooks:
+      - id: golangci-lint
+        pass_filenames: false
+        additional_dependencies: []   # MUST be here or Go env is empty
+        args:
+          - --timeout=5m
+          - ./...
+        require_serial: true

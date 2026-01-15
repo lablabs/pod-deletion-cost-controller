@@ -1,0 +1,26 @@
+{
+  "extends": ["config:recommended"],
+  "labels": ["dependencies"],
+
+  "enabledManagers": [
+    "mise",
+    "github-actions",
+    "custom.regex",
+    "gomod"
+  ],
+
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^\\.github/workflows/.*ya?ml$"
+        ],
+      "matchStrings": [
+        "MISE_VERSION:\\s*(?<currentValue>\\d{4}\\.\\d{2}\\.\\d{2})"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "jdx/mise",
+      "versioningTemplate": "regex:^(?<major>\\d{4})\\.(?<minor>\\d{2})\\.(?<patch>\\d{2})$"
+    }
+  ]
+}
