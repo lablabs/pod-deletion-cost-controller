@@ -1,7 +1,7 @@
 [tools]
 golang = "1.25.5"
 golangci-lint = "2.6.2"
-helm = "3.19.1"
+helm = "3.20.0"
 pre-commit = "4.4.0"
 kind = "0.31.0"
 
