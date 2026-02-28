@@ -2,7 +2,7 @@
 golang = "1.25.5"
 golangci-lint = "2.8.0"
 helm = "4.1.1"
-pre-commit = "4.4.0"
+pre-commit = "4.5.1"
 kind = "0.31.0"
 
 [tasks.lint]
