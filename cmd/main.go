@@ -21,6 +21,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/lablabs/pod-deletion-cost-controller/internal/timestamp"
 	"github.com/lablabs/pod-deletion-cost-controller/internal/zone"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -53,7 +54,15 @@ func (s *sliceFlag) String() string {
 }
 
 func (s *sliceFlag) Set(value string) error {
-	*s = append(*s, value)
+	// Accept both repeated flags (-algorithm-type zone -algorithm-type timestamp)
+	// and a single comma-separated value (-algorithm-type zone,timestamp), so a
+	// misconfigured chart or manual invocation still registers each algorithm.
+	for _, item := range strings.Split(value, ",") {
+		item = strings.TrimSpace(item)
+		if item != "" {
+			*s = append(*s, item)
+		}
+	}
 	return nil
 }
 
@@ -118,6 +127,11 @@ func main() {
 	err = zone.Register(logger, moduleMng, mgr.GetClient(), algoType)
 	if err != nil {
 		logger.Error(err, "unable to register zone")
+		os.Exit(1)
+	}
+	err = timestamp.Register(logger, moduleMng, mgr.GetClient(), algoType)
+	if err != nil {
+		logger.Error(err, "unable to register timestamp")
 		os.Exit(1)
 	}
 	if err := (&controller.PodReconciler{

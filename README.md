@@ -2,7 +2,7 @@
 
 A Kubernetes controller that automatically manages the [`controller.kubernetes.io/pod-deletion-cost`](https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/#pod-deletion-cost) annotation on pods. This annotation influences which pods are terminated first during scale-down operations, enabling smarter and more resilient downscaling behavior.
 
-The controller is designed to be **extensible** with a plugin-based architecture, allowing multiple algorithms for calculating pod deletion costs. Currently, it includes a **zone-aware distribution algorithm** that ensures even pod termination across availability zones.
+The controller is designed to be **extensible** with a plugin-based architecture, allowing multiple algorithms for calculating pod deletion costs. It currently includes a **zone-aware distribution algorithm** that ensures even pod termination across availability zones, and a **timestamp (age-based) algorithm** that prefers deleting the oldest pods to enable natural fleet refresh.
 
 ## The Problem: Default Kubernetes Scale-Down Behavior
 
@@ -84,6 +84,47 @@ Result: **Even distribution maintained** across all zones.
 
 ![Pod Deletion Cost Controller Flow](./docs/images/pod-deletion-cost-controller-flow.gif)
 
+## Algorithm: Timestamp (Age-Based)
+
+The `timestamp` algorithm assigns deletion costs based on pod creation time, so that **among otherwise equivalent eligible pods, older pods are preferred for deletion** during scale-down. Combined with everyday autoscaling, this drives a natural, continuous refresh of the fleet — long-lived pods are gradually recycled without a dedicated rollout.
+
+> **Note:** `pod-deletion-cost` is not the first criterion ReplicaSet uses when choosing which pod to delete. Unassigned, pending, or not-ready pods are still selected before deletion cost is considered. The timestamp algorithm only influences the choice among pods that are otherwise equivalent (assigned, running, ready).
+
+### How It Works
+
+1. **Pod Detection** - Controller watches for pods belonging to enabled Deployments
+2. **Cost Calculation** - Assigns cost = **creation unix timestamp bucketed by the minute** (`creationTimestamp / 60`); older pod → smaller timestamp → lower cost → deleted first
+3. **Annotation** - Applies `controller.kubernetes.io/pod-deletion-cost` to the pod, once, on first reconciliation
+
+### Design Notes
+
+- **Ordering is reconciliation-time-independent** - The cost is a pure function of `.metadata.creationTimestamp`, not the pod's age at the moment it is reconciled. This is essential because the annotation is written once and never recalculated: deriving cost from age at reconcile time would let a delayed or late-discovered pod (e.g. after a controller restart) receive a stale value that inverts the intended oldest-first order.
+- **Deterministic & idempotent** - Because cost depends only on the pod's own creation time, it does not require the expectations cache used by the zone algorithm. Each pod is annotated exactly once (subsequent reconciliations are skipped), respecting the API server load guidance in KEP-2255.
+- **int32-safe** - Bucketing the timestamp by the minute keeps the value well within the API server's `int32` range; overflow would not occur until ~year 6053, avoiding the Year-2038 problem a raw `creationTimestamp.Unix()` would hit (a raw timestamp crosses `MaxInt32` on 2038-01-19). The value is additionally clamped to `[-2147483648, 2147483647]`.
+- **Minute-granularity ties** - Pods created within the same minute receive the same cost; Kubernetes then falls back to its next tiebreaker (newer-creation-first), which is acceptable for fleet refresh. Note that a large simultaneous scale-up can place many pods in one minute bucket, so strict oldest-first ordering is not guaranteed *within* such a batch.
+- **Algorithm ownership** - When the timestamp handler sets a cost, it also stamps the pod with `pod-deletion-cost.lablabs.io/managed-by: timestamp`. If a Deployment switches from another algorithm (e.g. `zone`) to `timestamp`, existing pods still carry the previous algorithm's cost (zone values are near `MaxInt32`). The handler detects that it does not own those values and **recalculates** them, so switching algorithms does not leave pods with stale, incompatible costs that would invert the deletion order.
+
+### Example Scenario
+
+**Initial state:** 3 pods of the same Deployment
+
+```
+Pod1 (created 10:00 → cost: 29732280)   # oldest
+Pod2 (created 11:00 → cost: 29732340)
+Pod3 (created 12:00 → cost: 29732400)   # newest
+```
+
+**After scaling down by 1:**
+
+Kubernetes prefers deleting the pod with the lowest cost — `Pod1`, the oldest.
+
+```
+Pod2 (cost: 29732340)
+Pod3 (cost: 29732400)
+```
+
+Result: **oldest pod preferred for deletion**, enabling gradual fleet refresh.
+
 ## Installation
 
 ### Helm
@@ -111,6 +152,7 @@ Key configuration options in `values.yaml`:
 # Algorithms to enable
 algorithms:
   - "zone"
+  - "timestamp"
 
 # Logging configuration
 log:
@@ -177,7 +219,7 @@ spec:
 | Annotation | Required | Default | Description |
 |-----------|----------|---------|-------------|
 | `pod-deletion-cost.lablabs.io/enabled` | Yes | - | Set to `"true"` to enable the controller |
-| `pod-deletion-cost.lablabs.io/type` | No | `zone` | Algorithm type to use |
+| `pod-deletion-cost.lablabs.io/type` | No | `zone` | Algorithm type to use (`zone` or `timestamp`) |
 | `pod-deletion-cost.lablabs.io/spread-by` | No | `topology.kubernetes.io/zone` | Node label key for topology spreading |
 
 ### Custom Topology Label
@@ -227,6 +269,22 @@ metadata:
     pod-deletion-cost.lablabs.io/enabled: "true"
     pod-deletion-cost.lablabs.io/type: "zone"
 ```
+
+### Age-Based Deletion (Timestamp Algorithm)
+
+To delete the oldest pods first during scale-down (enabling natural fleet refresh), select the `timestamp` algorithm:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  annotations:
+    pod-deletion-cost.lablabs.io/enabled: "true"
+    pod-deletion-cost.lablabs.io/type: "timestamp"
+```
+
+The `timestamp` algorithm does not use topology labels, so `spread-by` has no effect on it.
 
 ## Contributing
 

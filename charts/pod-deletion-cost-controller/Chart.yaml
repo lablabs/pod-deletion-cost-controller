@@ -3,8 +3,8 @@ name: pod-deletion-cost-controller
 description: K8s controller for managing pod-deletion-cost
 
 type: application
-version: 0.0.1
-appVersion: "0.0.1"
+version: 0.1.0
+appVersion: "0.1.0"
 
 maintainers:
   - name: lablabs

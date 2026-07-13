@@ -66,9 +66,9 @@ spec:
             - "{{ .Values.log.stackTraceLevel }}"
             - "-zap-time-encoding"
             - "{{ .Values.log.timeEncoding }}"
-            {{- if .Values.algorithms }}
+            {{- range .Values.algorithms }}
             - "-algorithm-type"
-            - "{{ .Values.algorithms | join "," }}"
+            - {{ . | quote }}
             {{- end }}
           ports:
             {{- if .Values.metrics.enabled }}
