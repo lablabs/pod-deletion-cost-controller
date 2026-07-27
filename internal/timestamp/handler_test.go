@@ -28,6 +28,14 @@ func newScheme(t *testing.T) *runtime.Scheme {
 	return scheme
 }
 
+// costEpochUnix mirrors the unexported constant in the handler (2020-01-01Z).
+const costEpochUnix = 1577836800
+
+// wantCost is the value the handler is expected to derive for a creation time.
+func wantCost(creation time.Time) int {
+	return int(creation.Unix() - costEpochUnix)
+}
+
 func enabledDeployment() *appv1.Deployment {
 	return &appv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -87,7 +95,7 @@ func TestHandler_Handle_SetsCostFromCreationTimestamp(t *testing.T) {
 
 	cost := handle(t, pod)
 
-	assert.Equal(t, int(creation.Unix()/60), cost)
+	assert.Equal(t, wantCost(creation), cost)
 }
 
 func TestHandler_Handle_SkipsAlreadyAnnotatedByTimestamp(t *testing.T) {
@@ -144,7 +152,7 @@ func TestHandler_Handle_RecalculatesForeignCost(t *testing.T) {
 
 	cost, err := strconv.Atoi(stored.Annotations[controller.PodDeletionCostAnnotation])
 	require.NoError(t, err)
-	assert.Equal(t, int(creation.Unix()/60), cost, "foreign cost should be recalculated to timestamp value")
+	assert.Equal(t, wantCost(creation), cost, "foreign cost should be recalculated to timestamp value")
 	assert.Equal(t, "timestamp", stored.Annotations[timestamp.ManagedByAnnotation], "handler should take ownership")
 }
 
@@ -197,14 +205,26 @@ func TestHandler_Handle_OrderingIndependentOfReconcileTime(t *testing.T) {
 }
 
 func TestHandler_Handle_Int32Safety(t *testing.T) {
-	huge := time.Unix(int64(math.MaxInt32)*60+120, 0).UTC()
+	// A creation time whose seconds-since-epoch exceed MaxInt32 must clamp.
+	huge := time.Unix(costEpochUnix+int64(math.MaxInt32)+120, 0).UTC()
 	pod := runPod("future-pod", huge)
 
 	cost := handle(t, pod)
 	assert.Equal(t, math.MaxInt32, cost, "far-future creation must clamp to MaxInt32")
 }
 
-func TestHandler_Handle_SameMinuteTie(t *testing.T) {
+func TestHandler_Handle_PreEpochPodGetsNegativeCost(t *testing.T) {
+	// Pods created before the 2020 epoch yield a negative cost, which is a
+	// legal pod-deletion-cost value and correctly ranks them for deletion first.
+	creation := time.Date(2019, 6, 1, 0, 0, 0, 0, time.UTC)
+	pod := runPod("old-pod", creation)
+
+	cost := handle(t, pod)
+	assert.Equal(t, wantCost(creation), cost)
+	assert.Negative(t, cost, "pre-epoch pod should get a negative cost")
+}
+
+func TestHandler_Handle_PerSecondUnique(t *testing.T) {
 	base := time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC)
 	p1 := runPod("p1", base.Add(5*time.Second))
 	p2 := runPod("p2", base.Add(50*time.Second))
@@ -212,5 +232,7 @@ func TestHandler_Handle_SameMinuteTie(t *testing.T) {
 	c1 := handle(t, p1)
 	c2 := handle(t, p2)
 
-	assert.Equal(t, c1, c2, "pods created in the same minute bucket should tie")
+	assert.NotEqual(t, c1, c2, "pods created seconds apart must get distinct costs")
+	assert.Less(t, c1, c2, "the earlier pod must get the lower cost")
+	assert.Equal(t, 45, c2-c1, "cost delta must equal the second-level creation delta")
 }

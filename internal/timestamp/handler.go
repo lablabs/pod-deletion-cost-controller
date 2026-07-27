@@ -21,11 +21,22 @@ const (
 	// (e.g. "zone"), which it must recalculate when a Deployment switches type.
 	ManagedByAnnotation = "pod-deletion-cost.lablabs.io/managed-by"
 
-	// costBucketSeconds is the time granularity (in seconds) used to derive the
-	// deletion cost from the pod creation timestamp. Bucketing by the minute keeps
-	// the resulting int32 value far below the API server limit (overflow ~year 6053),
-	// avoiding the Year-2038 problem a raw unix timestamp would hit.
-	costBucketSeconds = 60
+	// costEpochUnix is 2020-01-01T00:00:00Z expressed as a Unix timestamp.
+	// The deletion cost is the number of seconds elapsed since this epoch, so
+	// every pod created at a distinct second gets a distinct, monotonic cost
+	// (older pod -> lower cost -> deleted first) — giving per-pod ordering
+	// rather than a coarser bucket.
+	//
+	// pod-deletion-cost is stored as a free-form string annotation (the API
+	// server does not range-check it). The int32 bound comes from the *reader*:
+	// the ReplicaSet controller parses the value with strconv.ParseInt(_, 10, 32)
+	// and, on overflow/parse error, silently treats the cost as 0 — which would
+	// drop the pod's ordering. Offsetting from 2020 instead of the 1970 Unix
+	// epoch keeps seconds-since-epoch inside int32 until ~2088 (vs the year-2038
+	// boundary a raw Unix-seconds cost would hit), and deletionCost clamps
+	// defensively so an out-of-range value degrades to the extreme rank rather
+	// than collapsing to 0.
+	costEpochUnix = 1577836800
 )
 
 // NewHandler creates a new timestamp-based Handler.
@@ -80,12 +91,17 @@ func (h *Handler) Handle(ctx context.Context, log logr.Logger, pod *corev1.Pod, 
 }
 
 // deletionCost maps a pod creation unix timestamp to a pod-deletion-cost value.
-// The timestamp is bucketed by costBucketSeconds so the value stays within the
-// int32 range the Kubernetes API server enforces, then clamped defensively.
-// The mapping is monotonic: an earlier creation time always yields a lower or
-// equal cost, so older pods are never ranked above newer ones.
+// The cost is the number of seconds between costEpochUnix (2020-01-01) and the
+// pod's creation time, clamped defensively to the int32 range the ReplicaSet
+// controller parses the annotation into (values outside it are read as 0).
+// The mapping is monotonic at one-second resolution: an earlier creation time
+// always yields a lower-or-equal cost, so older pods are never ranked above
+// newer ones. Resolution is limited to whole seconds because CreationTimestamp
+// itself is only second-precision, so pods created within the same second get
+// the same cost and are tie-broken by Kubernetes' other scale-down heuristics
+// (this is far finer than the previous minute-level bucketing).
 func deletionCost(creationUnix int64) int {
-	cost := creationUnix / costBucketSeconds
+	cost := creationUnix - costEpochUnix
 
 	if cost > math.MaxInt32 {
 		return math.MaxInt32

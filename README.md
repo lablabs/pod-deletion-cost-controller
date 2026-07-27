@@ -93,15 +93,15 @@ The `timestamp` algorithm assigns deletion costs based on pod creation time, so 
 ### How It Works
 
 1. **Pod Detection** - Controller watches for pods belonging to enabled Deployments
-2. **Cost Calculation** - Assigns cost = **creation unix timestamp bucketed by the minute** (`creationTimestamp / 60`); older pod → smaller timestamp → lower cost → deleted first
+2. **Cost Calculation** - Assigns cost = **seconds since a fixed 2020-01-01 epoch** (`creationTimestamp.Unix() - 1577836800`); older pod → smaller timestamp → lower cost → deleted first
 3. **Annotation** - Applies `controller.kubernetes.io/pod-deletion-cost` to the pod, once, on first reconciliation
 
 ### Design Notes
 
 - **Ordering is reconciliation-time-independent** - The cost is a pure function of `.metadata.creationTimestamp`, not the pod's age at the moment it is reconciled. This is essential because the annotation is written once and never recalculated: deriving cost from age at reconcile time would let a delayed or late-discovered pod (e.g. after a controller restart) receive a stale value that inverts the intended oldest-first order.
 - **Deterministic & idempotent** - Because cost depends only on the pod's own creation time, it does not require the expectations cache used by the zone algorithm. Each pod is annotated exactly once (subsequent reconciliations are skipped), respecting the API server load guidance in KEP-2255.
-- **int32-safe** - Bucketing the timestamp by the minute keeps the value well within the API server's `int32` range; overflow would not occur until ~year 6053, avoiding the Year-2038 problem a raw `creationTimestamp.Unix()` would hit (a raw timestamp crosses `MaxInt32` on 2038-01-19). The value is additionally clamped to `[-2147483648, 2147483647]`.
-- **Minute-granularity ties** - Pods created within the same minute receive the same cost; Kubernetes then falls back to its next tiebreaker (newer-creation-first), which is acceptable for fleet refresh. Note that a large simultaneous scale-up can place many pods in one minute bucket, so strict oldest-first ordering is not guaranteed *within* such a batch.
+- **int32-safe** - `pod-deletion-cost` is a free-form string annotation; the `int32` bound is enforced by the *reader* (the ReplicaSet controller parses it with `strconv.ParseInt(_, 10, 32)` and treats an out-of-range/invalid value as `0`). Offsetting from a 2020 epoch instead of the 1970 Unix epoch keeps seconds-since-epoch inside `int32` until ~year 2088, avoiding the Year-2038 problem a raw `creationTimestamp.Unix()` would hit (a raw timestamp crosses `MaxInt32` on 2038-01-19). The value is additionally clamped to `[-2147483648, 2147483647]` so an out-of-range value degrades to the extreme rank rather than collapsing to `0`.
+- **Second-granularity ties** - The cost has one-second resolution (Kubernetes `creationTimestamp` is only second-precision), so **pods created within the same second receive the same cost**; Kubernetes then falls back to its next tiebreaker (newer-creation-first). Pods created in *different* seconds are ordered strictly oldest-first. This is far finer than minute-level bucketing, but strict oldest-first ordering is still not guaranteed *within* a single second — e.g. a large simultaneous scale-up can place several pods in the same second.
 - **Algorithm ownership** - When the timestamp handler sets a cost, it also stamps the pod with `pod-deletion-cost.lablabs.io/managed-by: timestamp`. If a Deployment switches from another algorithm (e.g. `zone`) to `timestamp`, existing pods still carry the previous algorithm's cost (zone values are near `MaxInt32`). The handler detects that it does not own those values and **recalculates** them, so switching algorithms does not leave pods with stale, incompatible costs that would invert the deletion order.
 
 ### Example Scenario
@@ -109,9 +109,9 @@ The `timestamp` algorithm assigns deletion costs based on pod creation time, so 
 **Initial state:** 3 pods of the same Deployment
 
 ```
-Pod1 (created 10:00 → cost: 29732280)   # oldest
-Pod2 (created 11:00 → cost: 29732340)
-Pod3 (created 12:00 → cost: 29732400)   # newest
+Pod1 (created 2026-01-01 10:00:00 → cost: 189424800)   # oldest
+Pod2 (created 2026-01-01 11:00:00 → cost: 189428400)
+Pod3 (created 2026-01-01 12:00:00 → cost: 189432000)   # newest
 ```
 
 **After scaling down by 1:**
@@ -119,11 +119,16 @@ Pod3 (created 12:00 → cost: 29732400)   # newest
 Kubernetes prefers deleting the pod with the lowest cost — `Pod1`, the oldest.
 
 ```
-Pod2 (cost: 29732340)
-Pod3 (cost: 29732400)
+Pod2 (cost: 189428400)
+Pod3 (cost: 189432000)
 ```
 
 Result: **oldest pod preferred for deletion**, enabling gradual fleet refresh.
+
+Because the cost has one-second resolution, pods created even a second apart are
+still ordered correctly (e.g. a pod created at `10:00:00` → `189424800` is ranked
+below one created at `10:00:05` → `189424805`). Only pods created within the *same*
+second share a cost and are tie-broken by Kubernetes' other heuristics.
 
 ## Installation
 
