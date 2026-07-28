@@ -56,8 +56,7 @@ spec:
             - "-metrics-bind-address"
             - ":0"
             {{- end}}
-            - "-zap-devel"
-            - "{{ .Values.log.devel }}"
+            - "-zap-devel={{ .Values.log.devel }}"
             - "-zap-encoder"
             - "{{ .Values.log.encoder }}"
             - "-zap-log-level"
