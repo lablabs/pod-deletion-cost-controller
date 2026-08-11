@@ -54,7 +54,7 @@ spec:
             - {{ printf ":%d" (int .Values.metrics.service.ports.metrics ) }}
             {{- else }}
             - "-metrics-bind-address"
-            - ":0"
+            - "0"
             {{- end}}
             - "-zap-devel={{ .Values.log.devel }}"
             - "-zap-encoder"
