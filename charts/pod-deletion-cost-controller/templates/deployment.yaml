@@ -54,10 +54,9 @@ spec:
             - {{ printf ":%d" (int .Values.metrics.service.ports.metrics ) }}
             {{- else }}
             - "-metrics-bind-address"
-            - ":0"
+            - "0"
             {{- end}}
-            - "-zap-devel"
-            - "{{ .Values.log.devel }}"
+            - "-zap-devel={{ .Values.log.devel }}"
             - "-zap-encoder"
             - "{{ .Values.log.encoder }}"
             - "-zap-log-level"
@@ -66,9 +65,9 @@ spec:
             - "{{ .Values.log.stackTraceLevel }}"
             - "-zap-time-encoding"
             - "{{ .Values.log.timeEncoding }}"
-            {{- if .Values.algorithms }}
+            {{- range .Values.algorithms }}
             - "-algorithm-type"
-            - "{{ .Values.algorithms | join "," }}"
+            - {{ . | quote }}
             {{- end }}
           ports:
             {{- if .Values.metrics.enabled }}

@@ -77,8 +77,13 @@ log:
   # Zap time encoding (one of 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'). Defaults to 'epoch'.
   timeEncoding: epoch
 
+# Algorithms to enable (which handlers are registered).
+# Supported values: "zone", "timestamp". An empty list registers all algorithms.
+# The per-Deployment `pod-deletion-cost.lablabs.io/type` annotation selects which
+# enabled algorithm applies to that workload (defaults to "zone").
 algorithms:
   - "zone"
+  - "timestamp"
 
 metrics:
   ## @param metrics.enabled Enable exposing prometheus metrics

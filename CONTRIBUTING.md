@@ -30,17 +30,17 @@ The controller uses a plugin-based architecture for extensibility:
                       │
         ┌─────────────┼─────────────┐
         ▼             ▼             ▼
-   ┌─────────┐  ┌─────────┐  ┌─────────┐
-   │  Zone   │  │ Future  │  │ Future  │
-   │ Handler │  │  Algo   │  │  Algo   │
-   └─────────┘  └─────────┘  └─────────┘
+   ┌─────────┐  ┌───────────┐  ┌─────────┐
+   │  Zone   │  │ Timestamp │  │ Future  │
+   │ Handler │  │  Handler  │  │  Algo   │
+   └─────────┘  └───────────┘  └─────────┘
 ```
 
 ### Key Components
 
 - **PodReconciler**: Main controller that watches Kubernetes resources and triggers reconciliation
 - **ModuleManager**: Routes pods to the appropriate algorithm handler based on Deployment annotations
-- **Handler**: Algorithm implementations (currently `zone`)
+- **Handler**: Algorithm implementations (currently `zone` and `timestamp`)
 - **Expectations Cache**: Thread-safe cache for handling async reconciliation
 
 ### Project Structure
@@ -58,6 +58,10 @@ The controller uses a plugin-based architecture for extensibility:
 │   ├── zone/                      # Zone algorithm implementation
 │   │   ├── handler.go             # Zone distribution handler
 │   │   ├── controller_utils.go    # DeletionCostPool
+│   │   └── module.go              # Module registration
+│   ├── timestamp/                 # Timestamp (age-based) algorithm
+│   │   ├── handler.go             # Age-based deletion cost handler
+│   │   ├── handler_test.go        # Unit tests
 │   │   └── module.go              # Module registration
 │   ├── module/                    # Module interface definitions
 │   │   └── handler.go             # Handler interface
@@ -357,7 +361,7 @@ controller.GetType(dep *v1.Deployment) string
 
 ### Using the Expectations Cache
 
-The `expectations.Cache` helps handle async reconciliation by tracking pending assignments:
+The `expectations.Cache` helps handle async reconciliation by tracking pending assignments. It is **only needed when a pod's cost depends on the state of sibling pods** (as the `zone` algorithm does). If your algorithm derives the cost purely from the pod itself (as the `timestamp` algorithm does from `.metadata.creationTimestamp`), the calculation is deterministic and idempotent, so you can skip the cache entirely and simply guard with `controller.HasPodDeletionCost` / `controller.IsDeleting`.
 
 ```go
 cache := expectations.NewCache[types.UID, int]()
@@ -458,7 +462,7 @@ Aim for at least 80% code coverage for new algorithms.
 
 Looking for inspiration? Here are some algorithm ideas that could be valuable:
 
-- **Age-based**: Prioritize deletion of newer/older pods
+- **Age-based**: Prioritize deletion of newer/older pods (implemented as the `timestamp` algorithm)
 - **Resource-based**: Consider pod resource usage for deletion priority
 - **Node-type-based**: Spread deletions across different node types (spot vs on-demand)
 - ...
