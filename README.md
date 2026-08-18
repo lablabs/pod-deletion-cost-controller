@@ -142,6 +142,28 @@ Ranking pods against each other side-steps the resolution limit entirely and gua
 - **Terminating pods are excluded**, otherwise they would consume a rank and shift every younger pod.
 - **Not-Ready pods are included**, which keeps ranks stable as pods become ready. Kubernetes compares phase and readiness before `pod-deletion-cost` anyway, so an unready pod is already preferred for deletion.
 
+### Switching a Deployment's `type`
+
+Changing `pod-deletion-cost.lablabs.io/type` on an existing Deployment is only handled in
+one direction today:
+
+- **-> `timestamp-rank`**: costs written by another algorithm are replaced. Because every
+  reconcile re-ranks the *whole* ReplicaSet, one pod event repairs every pod at once. It is
+  not immediate, though: the Deployment watch only enqueues pods that have **no** cost yet,
+  so the repair happens on the next reconcile triggered by any pod of that ReplicaSet (a
+  controller restart re-lists everything and also does it).
+- **`timestamp-rank` -> `zone`**: **not** handled. `zone` returns early for any pod that
+  already has a cost, so pods keep their old ranks while newly created pods get zone values
+  descending from `MaxInt32`. Since ranks are small, every leftover pod then sorts below
+  every zone-assigned pod and is deleted first, ignoring zone balance until the last one is
+  replaced.
+
+The same applies to `zone` -> `timestamp` in #19, and to any cost set by hand: `zone` has
+always treated the presence of the annotation as "done". Recreating the pods (or rolling
+the Deployment) after switching to `zone` avoids the issue. Teaching `zone` to recognise a
+foreign `managed-by` stamp is left to a follow-up, since it changes the behaviour of the
+default algorithm.
+
 ### Choosing Between the Algorithms
 
 | Goal | Algorithm |
@@ -311,7 +333,7 @@ metadata:
 | Annotation | Written by | Description |
 |-----------|-----------|-------------|
 | `controller.kubernetes.io/pod-deletion-cost` | all algorithms | The deletion cost consumed by Kubernetes |
-| `pod-deletion-cost.lablabs.io/managed-by` | `timestamp-rank` | Records which algorithm produced the current cost, so a value left behind by another algorithm is recalculated when a Deployment switches `type` |
+| `pod-deletion-cost.lablabs.io/managed-by` | `timestamp-rank` | Records which algorithm produced the current cost, so a cost left behind by another algorithm is replaced rather than trusted |
 
 ## Contributing
 

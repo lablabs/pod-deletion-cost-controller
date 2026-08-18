@@ -18,9 +18,14 @@ const (
 	TypeAnnotation = "timestamp-rank"
 
 	// ManagedByAnnotation records which algorithm produced the current
-	// pod-deletion-cost value. It lets an operator tell a rank written by this
-	// handler apart from a value left behind by another algorithm (e.g. "zone")
-	// after a Deployment switches type.
+	// pod-deletion-cost value. It lets this handler tell a rank it wrote apart
+	// from a value left behind by another algorithm (e.g. "zone") after a
+	// Deployment switches type, so the foreign value is replaced rather than
+	// trusted.
+	//
+	// Note the reverse switch is not symmetric: "zone" returns early for any pod
+	// that already carries a cost, so it will not reclaim pods ranked here. See
+	// the README section on switching a Deployment's type.
 	ManagedByAnnotation = "pod-deletion-cost.lablabs.io/managed-by"
 
 	// firstRank is the cost assigned to the oldest pod of a ReplicaSet.
