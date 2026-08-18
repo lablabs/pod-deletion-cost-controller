@@ -84,6 +84,29 @@ func mapDeploymentToPodReconcileFunc(c client.Client) handler.MapFunc {
 	}
 }
 
+// ListPodsByOwnerRSIndex lists every Pod in the Pod's namespace that shares its
+// owning ReplicaSet, resolved through the PodToRSIndex field index. When the Pod
+// has no owning ReplicaSet the list is left untouched and no error is returned,
+// so callers must treat an empty result as "nothing to rank" rather than an error.
+func ListPodsByOwnerRSIndex(ctx context.Context, c client.Client, pod *corev1.Pod, list *corev1.PodList) error {
+	var rsUID types.UID
+	for _, owner := range pod.OwnerReferences {
+		if owner.Kind == "ReplicaSet" {
+			rsUID = owner.UID
+			break
+		}
+	}
+
+	if rsUID == "" {
+		return nil
+	}
+
+	return c.List(ctx, list,
+		client.InNamespace(pod.Namespace),
+		client.MatchingFields{PodToRSIndex: string(rsUID)},
+	)
+}
+
 // GetDeployment return deployment associated with Pod
 func GetDeployment(ctx context.Context, c client.Client, pod *corev1.Pod) (*v1.Deployment, error) {
 	var rsName string

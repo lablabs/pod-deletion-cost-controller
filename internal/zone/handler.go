@@ -96,7 +96,7 @@ func (h *Handler) listPodsInZone(
 		return fmt.Errorf("unable to get pod annotation: %w", err)
 	}
 	podList := &corev1.PodList{}
-	err = listPodsByOwnerRSIndex(ctx, h.client, pod, podList)
+	err = controller.ListPodsByOwnerRSIndex(ctx, h.client, pod, podList)
 	if err != nil {
 		return fmt.Errorf("unable to list pods by rs: %w", err)
 	}
@@ -133,27 +133,4 @@ func (h *Handler) getPodAnnotation(ctx context.Context, pod *corev1.Pod, deploym
 		return "", err
 	}
 	return GetSpreadByAnnotation(node, deployment), nil
-}
-
-func listPodsByOwnerRSIndex(ctx context.Context, c client.Client, pod *corev1.Pod, list *corev1.PodList) error {
-	var rsUID types.UID
-	for _, owner := range pod.OwnerReferences {
-		if owner.Kind == "ReplicaSet" {
-			rsUID = owner.UID
-			break
-		}
-	}
-
-	if rsUID == "" {
-		return nil
-	}
-
-	err := c.List(ctx, list,
-		client.InNamespace(pod.Namespace),
-		client.MatchingFields{controller.PodToRSIndex: string(rsUID)},
-	)
-	if err != nil {
-		return err
-	}
-	return nil
 }
