@@ -21,6 +21,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/lablabs/pod-deletion-cost-controller/internal/timestamprank"
 	"github.com/lablabs/pod-deletion-cost-controller/internal/zone"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -118,6 +119,11 @@ func main() {
 	err = zone.Register(logger, moduleMng, mgr.GetClient(), algoType)
 	if err != nil {
 		logger.Error(err, "unable to register zone")
+		os.Exit(1)
+	}
+	err = timestamprank.Register(logger, moduleMng, mgr.GetClient(), algoType)
+	if err != nil {
+		logger.Error(err, "unable to register timestamp-rank")
 		os.Exit(1)
 	}
 	if err := (&controller.PodReconciler{
