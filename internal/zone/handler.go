@@ -102,17 +102,16 @@ func (h *Handler) listPodsInZone(
 	}
 
 	nodeCache := make(map[string]*corev1.Node)
-	node := &corev1.Node{}
 	for _, p := range podList.Items {
 		nodeName := p.Spec.NodeName
 		cachedNode, ok := nodeCache[nodeName]
 		if !ok {
-			if err := h.client.Get(ctx, types.NamespacedName{Name: nodeName}, node); err != nil {
+			node, err := h.getNode(ctx, nodeName)
+			if err != nil {
 				return err
 			}
-			nodeCopy := node.DeepCopy()
-			nodeCache[nodeName] = nodeCopy
-			cachedNode = nodeCopy
+			nodeCache[nodeName] = node
+			cachedNode = node
 		}
 		zoneAnn := GetSpreadByAnnotation(cachedNode, deployment)
 		if podRecZoneAnn != zoneAnn {
@@ -126,11 +125,17 @@ func (h *Handler) listPodsInZone(
 
 func (h *Handler) getPodAnnotation(ctx context.Context, pod *corev1.Pod, deployment *v1.Deployment) (string, error) {
 	//Get zone for reconcile POD
-	node := &corev1.Node{}
-	if err := h.client.Get(ctx, types.NamespacedName{
-		Name: pod.Spec.NodeName,
-	}, node); err != nil {
+	node, err := h.getNode(ctx, pod.Spec.NodeName)
+	if err != nil {
 		return "", err
 	}
 	return GetSpreadByAnnotation(node, deployment), nil
+}
+
+func (h *Handler) getNode(ctx context.Context, name string) (*corev1.Node, error) {
+	node := controller.NodeMetadata()
+	if err := h.client.Get(ctx, types.NamespacedName{Name: name}, node); err != nil {
+		return nil, err
+	}
+	return &corev1.Node{ObjectMeta: node.ObjectMeta}, nil
 }

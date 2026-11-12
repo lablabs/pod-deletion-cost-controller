@@ -23,9 +23,6 @@ import (
 
 	"github.com/lablabs/pod-deletion-cost-controller/internal/timestamprank"
 	"github.com/lablabs/pod-deletion-cost-controller/internal/zone"
-	v1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -94,14 +91,7 @@ func main() {
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "8bc3731b.pod-deletion-cost-controller.lablabs.io",
 		// Enable strict mode
-		Cache: cache.Options{
-			ByObject: map[client.Object]cache.ByObject{
-				&corev1.Node{}:   {},
-				&corev1.Pod{}:    {},
-				&v1.ReplicaSet{}: {},
-				&v1.Deployment{}: {},
-			},
-		},
+		Cache: controller.CacheOptions(),
 		Client: client.Options{
 			Cache: &client.CacheOptions{
 				DisableFor: []client.Object{}, // disable no types

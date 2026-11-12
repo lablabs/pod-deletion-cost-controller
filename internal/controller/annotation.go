@@ -5,6 +5,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -42,11 +43,8 @@ func GetPodDeletionCost(pod *corev1.Pod) (int, bool) {
 }
 
 // IsEnabled return true if Deployment has EnableAnnotation enabled
-func IsEnabled(dep *appsv1.Deployment) bool {
-	if dep.Annotations == nil {
-		return false
-	}
-	return dep.Annotations[EnableAnnotation] == "true"
+func IsEnabled(dep metav1.Object) bool {
+	return dep.GetAnnotations()[EnableAnnotation] == "true"
 }
 
 // GetType return TypeAnnotation
