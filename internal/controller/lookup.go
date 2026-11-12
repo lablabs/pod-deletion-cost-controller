@@ -36,9 +36,8 @@ func createPodToRSIndex(mgr ctrl.Manager) error {
 
 // createRsToDeploymentIndex create index for mapping ReplicaSet owner reference UID
 func createRsToDeploymentIndex(mgr ctrl.Manager) error {
-	return mgr.GetFieldIndexer().IndexField(context.Background(), &v1.ReplicaSet{}, RsToDeploymentIndex, func(obj client.Object) []string {
-		rs := obj.(*v1.ReplicaSet)
-		for _, owner := range rs.OwnerReferences {
+	return mgr.GetFieldIndexer().IndexField(context.Background(), ReplicaSetMetadata(), RsToDeploymentIndex, func(obj client.Object) []string {
+		for _, owner := range obj.GetOwnerReferences() {
 			if owner.Kind == "Deployment" {
 				return []string{string(owner.UID)}
 			}
@@ -50,12 +49,11 @@ func createRsToDeploymentIndex(mgr ctrl.Manager) error {
 func mapDeploymentToPodReconcileFunc(c client.Client) handler.MapFunc {
 	return func(ctx context.Context, object client.Object) []reconcile.Request {
 		log := logr.FromContext(ctx)
-		dep := object.(*v1.Deployment)
-		if !IsEnabled(dep) {
+		if !IsEnabled(object) {
 			return nil
 		}
-		rsList := &v1.ReplicaSetList{}
-		if err := c.List(ctx, rsList, client.MatchingFields{RsToDeploymentIndex: string(dep.UID)}); err != nil {
+		rsList := ReplicaSetMetadataList()
+		if err := c.List(ctx, rsList, client.MatchingFields{RsToDeploymentIndex: string(object.GetUID())}); err != nil {
 			log.Error(err, "unable to list ReplicaSets")
 			return nil
 		}
@@ -120,7 +118,7 @@ func GetDeployment(ctx context.Context, c client.Client, pod *corev1.Pod) (*v1.D
 		return nil, fmt.Errorf("pod %s/%s has no owning ReplicaSet", pod.Namespace, pod.Name)
 	}
 
-	rs := &v1.ReplicaSet{}
+	rs := ReplicaSetMetadata()
 	if err := c.Get(ctx, types.NamespacedName{Namespace: pod.Namespace, Name: rsName}, rs); err != nil {
 		return nil, fmt.Errorf("get replicaset %s/%s: %w", pod.Namespace, rsName, err)
 	}
@@ -137,10 +135,10 @@ func GetDeployment(ctx context.Context, c client.Client, pod *corev1.Pod) (*v1.D
 		return nil, fmt.Errorf("replicaset %s/%s has no owning Deployment", rs.Namespace, rs.Name)
 	}
 
-	deploy := &v1.Deployment{}
+	deploy := DeploymentMetadata()
 	if err := c.Get(ctx, types.NamespacedName{Namespace: rs.Namespace, Name: deployName}, deploy); err != nil {
 		return nil, fmt.Errorf("get deployment %s/%s: %w", rs.Namespace, deployName, err)
 	}
 
-	return deploy, nil
+	return &v1.Deployment{ObjectMeta: deploy.ObjectMeta}, nil
 }

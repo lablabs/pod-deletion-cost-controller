@@ -1,7 +1,6 @@
 package controller
 
 import (
-	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -10,11 +9,7 @@ import (
 // DeploymentPredicate creates Deployment predicate for filtering
 func DeploymentPredicate() predicate.Predicate {
 	return predicate.NewPredicateFuncs(func(obj client.Object) bool {
-		dep, ok := obj.(*v1.Deployment)
-		if !ok {
-			return false
-		}
-		return IsEnabled(dep)
+		return IsEnabled(obj)
 	})
 }
 

@@ -91,6 +91,7 @@ var _ = BeforeSuite(func() {
 	//
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
+		Cache:  controller.CacheOptions(),
 	})
 	Expect(err).NotTo(HaveOccurred())
 

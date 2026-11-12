@@ -76,8 +76,8 @@ func (r *PodReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.Pod{}, builder.WithPredicates(PodPredicate())).
-		Watches(&v1.ReplicaSet{}, handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(), &v1.Deployment{}, handler.OnlyControllerOwner())).
-		Watches(&v1.Deployment{}, handler.EnqueueRequestsFromMapFunc(mapDeploymentToPodReconcileFunc(r.Client)), builder.WithPredicates(DeploymentPredicate())).
-		Watches(&corev1.Node{}, handler.Funcs{}).
+		WatchesMetadata(&v1.ReplicaSet{}, handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(), &v1.Deployment{}, handler.OnlyControllerOwner())).
+		WatchesMetadata(&v1.Deployment{}, handler.EnqueueRequestsFromMapFunc(mapDeploymentToPodReconcileFunc(r.Client)), builder.WithPredicates(DeploymentPredicate())).
+		WatchesMetadata(&corev1.Node{}, handler.Funcs{}).
 		Complete(r)
 }
