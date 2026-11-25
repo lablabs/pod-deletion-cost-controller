@@ -5,6 +5,11 @@ helm = "4.3.2"
 pre-commit = "4.7.0"
 kind = "0.33.0"
 
+[env]
+# Use the Go version that mise installs. This overrides a GOTOOLCHAIN value
+# that `go env -w` stored in the user's Go env file.
+GOTOOLCHAIN = "local"
+
 [tasks.lint]
 description = "Run golangci-lint"
 run = "golangci-lint run"

@@ -11,8 +11,7 @@ permissions:
   packages: write
 
 env:
-  HELM_VERSION: 3.14.0
-  MISE_VERSION: 2025.12.13
+  MISE_VERSION: 2026.11.9
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 env:
-  MISE_VERSION: 2025.12.13
+  MISE_VERSION: 2026.11.9
 
 jobs:
   lint:
@@ -25,11 +25,6 @@ jobs:
         uses: jdx/mise-action@9dc7d5dd454262207dea3ab5a06a3df6afc8ff26 # v3.4.1
         with:
           version: ${{ env.MISE_VERSION }}
-
-      - name: Setup Go
-        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # 5.6.0
-        with:
-          go-version-file: go.mod
 
       - name: Install dependencies
         run: mise download-deps
