@@ -19,11 +19,12 @@
         "^\\.github/workflows/.*ya?ml$"
         ],
       "matchStrings": [
-        "MISE_VERSION:\\s*(?<currentValue>\\d{4}\\.\\d{2}\\.\\d{2})"
+        "MISE_VERSION:\\s*(?<currentValue>\\d{4}\\.\\d{1,2}\\.\\d{1,2})"
       ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "jdx/mise",
-      "versioningTemplate": "regex:^(?<major>\\d{4})\\.(?<minor>\\d{2})\\.(?<patch>\\d{2})$"
+      "extractVersionTemplate": "^v(?<version>.+)$",
+      "versioningTemplate": "regex:^(?<major>\\d{4})\\.(?<minor>\\d{1,2})\\.(?<patch>\\d{1,2})$"
     }
   ],
   "packageRules": [
