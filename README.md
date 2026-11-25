@@ -188,7 +188,7 @@ metadata:
 ### Helm
 
 ```bash
-VERSION=v0.0.0-alpha.2
+VERSION=v0.2.0
 
 # Pull the chart (optional)
 helm pull oci://ghcr.io/lablabs/pod-deletion-cost-controller/pod-deletion-cost-controller \
