@@ -71,7 +71,7 @@ The controller uses a plugin-based architecture for extensibility:
 
 ### Prerequisites
 
-- [Go](https://golang.org/) 1.24+
+- [Go](https://golang.org/) 1.26+
 - [mise](https://mise.jdx.dev/) - for tool management
 - [Kind](https://kind.sigs.k8s.io/) - for E2E tests
 - [pre-commit](https://pre-commit.com/) - for git hooks

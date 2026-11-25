@@ -1,6 +1,9 @@
 {
+  "prHourlyLimit": 0,
   "extends": ["config:recommended"],
   "labels": ["dependencies"],
+  "minimumReleaseAge": "7 days",
+  "internalChecksFilter": "strict",
 
   "enabledManagers": [
     "mise",
@@ -22,5 +25,18 @@
       "depNameTemplate": "jdx/mise",
       "versioningTemplate": "regex:^(?<major>\\d{4})\\.(?<minor>\\d{2})\\.(?<patch>\\d{2})$"
     }
-  ]
+  ],
+  "packageRules": [
+    {
+      "description": "No cooldown for lablabs-owned packages",
+      "matchPackageNames": [
+        "lablabs/**",
+        "ghcr.io/lablabs/**"
+      ],
+      "minimumReleaseAge": "0 days"
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "addLabels": ["security"]
+  }
 }
