@@ -2,10 +2,10 @@ package zone
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/go-logr/logr"
 	"github.com/lablabs/pod-deletion-cost-controller/internal/module"
-	"k8s.io/utils/strings/slices"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
