@@ -4,6 +4,8 @@ golangci-lint = "2.15.0"
 helm = "4.3.2"
 pre-commit = "4.7.0"
 kind = "0.33.0"
+awscli = "2.31.17"
+k9s = "0.50.18"
 
 [env]
 # Use the Go version that mise installs. This overrides a GOTOOLCHAIN value
